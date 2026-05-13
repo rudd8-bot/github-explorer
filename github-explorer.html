@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub 탐색 도구</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0d0d; color: #e8e6e0; font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; min-height: 100vh; line-height: 1.6; }
+  .shell { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 0.5px solid rgba(255,255,255,0.08); }
+  .logo { font-family: 'Courier New', monospace; font-size: 13px; color: #c8ff6e; letter-spacing: 0.05em; }
+  .logo span { color: #555550; }
+  .settings-btn { background: none; border: 0.5px solid rgba(255,255,255,0.14); color: #888882; padding: 6px 14px; border-radius: 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+  .settings-btn:hover { border-color: #c8ff6e; color: #c8ff6e; }
+  .settings-panel { display: none; background: #141414; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  .settings-panel.open { display: block; }
+  .settings-panel h3 { font-size: 11px; font-family: 'Courier New', monospace; color: #555550; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 1rem; }
+  .field { margin-bottom: 0.75rem; }
+  .field label { display: block; font-size: 12px; color: #888882; margin-bottom: 4px; }
+  .field input { width: 100%; background: #1a1a1a; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 8px 12px; color: #e8e6e0; font-size: 13px; font-family: 'Courier New', monospace; outline: none; transition: border-color 0.15s; }
+  .field input:focus { border-color: #c8ff6e; }
+  .save-btn { background: #c8ff6e; border: none; border-radius: 6px; color: #0d0d0d; font-weight: 600; font-size: 12px; padding: 7px 18px; cursor: pointer; margin-top: 0.5rem; transition: opacity 0.15s; }
+  .save-btn:hover { opacity: 0.85; }
+  .no-key { background: rgba(255,107,107,0.06); border: 0.5px solid rgba(255,107,107,0.2); border-radius: 10px; padding: 0.75rem 1rem; font-size: 12px; color: #ff6b6b; margin-bottom: 1rem; display: none; }
+  .no-key.show { display: block; }
+  .input-area { background: #141414; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  .input-label { font-size: 11px; font-family: 'Courier New', monospace; color: #555550; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.75rem; }
+  textarea { width: 100%; background: #1a1a1a; border: 0.5px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 10px 12px; color: #e8e6e0; font-size: 14px; font-family: 'DM Sans', system-ui, sans-serif; resize: none; outline: none; line-height: 1.6; min-height: 80px; }
+  textarea:focus { border-color: rgba(255,255,255,0.25); }
+  textarea::placeholder { color: #555550; }
+  .input-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; }
+  .run-btn { background: #c8ff6e; border: none; border-radius: 6px; color: #0d0d0d; font-weight: 600; font-size: 13px; padding: 8px 22px; cursor: pointer; transition: opacity 0.15s; }
+  .run-btn:hover { opacity: 0.85; }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .step { display: none; margin-bottom: 1.25rem; }
+  .step.active { display: block; }
+  .bubble { background: #141414; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+  .bubble-label { font-size: 10px; font-family: 'Courier New', monospace; color: #555550; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.5rem; }
+  .bubble p { color: #e8e6e0; line-height: 1.7; }
+  .bubble p + p { margin-top: 0.5rem; }
+  .confirm-row { display: flex; gap: 8px; margin-top: 0.75rem; }
+  .btn-yes { background: #c8ff6e; border: none; border-radius: 6px; color: #0d0d0d; font-size: 12px; font-weight: 600; padding: 7px 18px; cursor: pointer; transition: opacity 0.15s; }
+  .btn-yes:hover { opacity: 0.85; }
+  .btn-no { background: none; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 6px; color: #888882; font-size: 12px; padding: 7px 18px; cursor: pointer; transition: all 0.15s; }
+  .btn-no:hover { color: #e8e6e0; }
+  .analysis-box { background: #1a1a1a; border: 0.5px solid rgba(200,255,110,0.18); border-radius: 8px; padding: 0.75rem 1rem; margin: 0.75rem 0 1rem; font-size: 12px; color: #888882; line-height: 1.7; }
+  .analysis-label { font-size: 10px; font-family: 'Courier New', monospace; color: #c8ff6e; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 5px; }
+  .questions { margin-top: 0.75rem; }
+  .q-item { margin-bottom: 1.5rem; }
+  .q-label { font-size: 13px; color: #e8e6e0; line-height: 1.5; margin-bottom: 4px; }
+  .q-reason { font-size: 12px; color: #555550; margin-bottom: 0.6rem; line-height: 1.5; }
+  .rec-hint { font-size: 12px; color: #c8ff6e; background: rgba(200,255,110,0.06); border: 0.5px solid rgba(200,255,110,0.15); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; line-height: 1.5; }
+  .checkbox-group { display: flex; flex-direction: column; gap: 6px; }
+  .cb-item { display: flex; align-items: center; gap: 9px; cursor: pointer; padding: 8px 10px; border-radius: 6px; border: 0.5px solid rgba(255,255,255,0.08); background: #1a1a1a; transition: all 0.15s; user-select: none; }
+  .cb-item:hover { border-color: rgba(255,255,255,0.2); }
+  .cb-item.checked { border-color: rgba(200,255,110,0.35); background: rgba(200,255,110,0.04); }
+  .cb-item.recommended { border-color: rgba(200,255,110,0.22); }
+  .cb-item input { width: 14px; height: 14px; accent-color: #c8ff6e; cursor: pointer; flex-shrink: 0; }
+  .cb-label { font-size: 13px; color: #e8e6e0; flex: 1; }
+  .rec-badge { font-size: 10px; font-family: 'Courier New', monospace; color: #c8ff6e; background: rgba(200,255,110,0.1); border-radius: 3px; padding: 1px 6px; flex-shrink: 0; }
+  .impact-box { margin-top: 0.6rem; padding: 8px 12px; background: #1a1a1a; border-left: 2px solid #c8ff6e; border-radius: 0 6px 6px 0; font-size: 12px; color: #888882; line-height: 1.6; display: none; }
+  .impact-box.show { display: block; }
+  .status-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #141414; border: 0.5px solid rgba(255,255,255,0.08); border-radius: 10px; margin-bottom: 1rem; font-size: 12px; font-family: 'Courier New', monospace; color: #888882; }
+  .spinner { width: 14px; height: 14px; border: 1.5px solid rgba(255,255,255,0.14); border-top-color: #c8ff6e; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .keywords { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.5rem 0; }
+  .keyword { background: rgba(200,255,110,0.08); color: #c8ff6e; border: 0.5px solid rgba(200,255,110,0.2); border-radius: 4px; font-size: 11px; font-family: 'Courier New', monospace; padding: 3px 9px; }
+  .repos-grid { display: flex; flex-direction: column; gap: 0.75rem; }
+  .repo-card { background: #141414; border: 0.5px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 1rem 1.25rem; transition: border-color 0.15s; }
+  .repo-card:hover { border-color: rgba(255,255,255,0.14); }
+  .repo-card.pass { border-left: 2px solid #c8ff6e; }
+  .repo-card.warn { border-left: 2px solid #ffaa44; }
+  .repo-card.fail { border-left: 2px solid #555550; }
+  .repo-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.5rem; gap: 1rem; }
+  .repo-name { font-family: 'Courier New', monospace; font-size: 13px; color: #66aaff; text-decoration: none; }
+  .repo-name:hover { color: #c8ff6e; }
+  .repo-meta { display: flex; gap: 10px; font-size: 11px; font-family: 'Courier New', monospace; color: #555550; flex-shrink: 0; }
+  .repo-desc { font-size: 13px; color: #888882; margin-bottom: 0.75rem; line-height: 1.5; }
+  .filter-badges { display: flex; gap: 6px; margin-bottom: 0.5rem; flex-wrap: wrap; }
+  .badge { font-size: 10px; font-family: 'Courier New', monospace; padding: 2px 8px; border-radius: 4px; }
+  .badge.ok { background: rgba(200,255,110,0.1); color: #c8ff6e; }
+  .badge.ng { background: rgba(255,107,107,0.1); color: #ff6b6b; }
+  .verdict { font-size: 12px; line-height: 1.6; padding: 8px 10px; border-radius: 6px; background: #1a1a1a; }
+  .verdict.pass { color: #c8ff6e; }
+  .verdict.warn { color: #ffaa44; }
+  .verdict.fail { color: #555550; }
+  .conclusion { background: #141414; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 1.25rem; margin-top: 1.5rem; }
+  .conclusion h3 { font-size: 11px; font-family: 'Courier New', monospace; color: #c8ff6e; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.75rem; }
+  .conclusion p { color: #e8e6e0; line-height: 1.7; font-size: 14px; }
+  .conclusion p + p { margin-top: 0.75rem; }
+  .reset-row { margin-top: 1.5rem; }
+  .btn-reset { background: none; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 6px; color: #888882; font-size: 12px; padding: 7px 18px; cursor: pointer; transition: all 0.15s; }
+  .btn-reset:hover { color: #e8e6e0; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="header">
+    <div class="logo">github<span>/</span>explorer<span>.v2</span></div>
+    <button class="settings-btn" onclick="toggleSettings()">⚙ API 설정</button>
+  </div>
+  <div class="settings-panel" id="settingsPanel">
+    <h3>API 키 설정</h3>
+    <div class="field"><label>Claude API Key</label><input type="password" id="claudeKey" placeholder="sk-ant-..." /></div>
+    <div class="field"><label>GitHub Personal Access Token</label><input type="password" id="githubKey" placeholder="ghp_..." /></div>
+    <button class="save-btn" onclick="saveKeys()">저장</button>
+  </div>
+  <div class="no-key" id="noKeyWarn">API 키가 없어요. 위의 ⚙ API 설정에서 Claude API Key와 GitHub Token을 입력해 주세요.</div>
+
+  <div class="step active" id="step0">
+    <div class="input-area">
+      <div class="input-label">문제 / 아이디어 입력</div>
+      <textarea id="problemInput" rows="3" placeholder="예: 선박 위치를 자동으로 추적해서 엑셀에 저장하고 싶어"></textarea>
+      <div class="input-footer"><span style="font-size:11px;color:#555550;font-family:'Courier New',monospace;align-self:center">Shift+Enter 줄바꿈</span><button class="run-btn" id="runBtn" onclick="startFlow()">탐색 시작 →</button></div>
+    </div>
+  </div>
+
+  <div class="step" id="step1">
+    <div class="status-bar" id="step1Status"><div class="spinner"></div><span>문제 이해 중...</span></div>
+    <div class="bubble" id="confirmBubble" style="display:none">
+      <div class="bubble-label">Claude</div>
+      <p id="confirmText"></p>
+      <div class="confirm-row">
+        <button class="btn-yes" onclick="confirmed()">맞아</button>
+        <button class="btn-no" onclick="notConfirmed()">아니야, 다시 설명할게</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="step" id="step2">
+    <div class="bubble">
+      <div class="bubble-label">Claude</div>
+      <p>몇 가지만 알려주면 더 맞는 결과를 찾을 수 있어요.</p>
+      <div class="analysis-box" id="analysisBox" style="display:none">
+        <div class="analysis-label">문제 분석</div>
+        <div id="analysisText"></div>
+      </div>
+      <div class="questions" id="questionsArea"><div style="color:#555550;font-size:12px;padding:0.5rem 0">분석 중...</div></div>
+      <div style="margin-top:1rem"><button class="btn-yes" onclick="submitSituation()">검색 시작</button></div>
+    </div>
+  </div>
+
+  <div class="step" id="step3">
+    <div class="status-bar" id="searchStatus"><div class="spinner"></div><span id="searchStatusText">GitHub 검색 중...</span></div>
+    <div id="keywordsDisplay" style="display:none;margin-bottom:1rem">
+      <div style="font-size:11px;font-family:'Courier New',monospace;color:#555550;margin-bottom:6px">검색 키워드</div>
+      <div class="keywords" id="keywordsList"></div>
+    </div>
+  </div>
+
+  <div class="step" id="step4">
+    <div style="font-size:11px;font-family:'Courier New',monospace;color:#555550;margin-bottom:0.75rem;letter-spacing:0.06em;text-transform:uppercase">탐색 결과</div>
+    <div class="repos-grid" id="reposGrid"></div>
+    <div class="conclusion" id="conclusionBox" style="display:none">
+      <h3>결론</h3>
+      <div id="conclusionText"></div>
+    </div>
+    <div class="reset-row"><button class="btn-reset" onclick="resetAll()">← 처음으로</button></div>
+  </div>
+</div>
+
+<script>
+const STEPS = ['step0','step1','step2','step3','step4'];
+let state = { problem:'', understanding:'', analysis:null, keywords:[], situation:{}, repos:[] };
+
+function getKeys() { return { claude: localStorage.getItem('claude_key')||'', github: localStorage.getItem('github_key')||'' }; }
+function saveKeys() {
+  const c = document.getElementById('claudeKey').value.trim();
+  const g = document.getElementById('githubKey').value.trim();
+  if (c) localStorage.setItem('claude_key', c);
+  if (g) localStorage.setItem('github_key', g);
+  document.getElementById('settingsPanel').classList.remove('open');
+  document.getElementById('noKeyWarn').classList.remove('show');
+  alert('저장됐어요!');
+}
+function toggleSettings() {
+  document.getElementById('settingsPanel').classList.toggle('open');
+  const k = getKeys();
+  if (k.claude) document.getElementById('claudeKey').value = k.claude;
+  if (k.github) document.getElementById('githubKey').value = k.github;
+}
+function activateSteps(...ids) {
+  STEPS.forEach(s => document.getElementById(s).classList.remove('active'));
+  ids.forEach(id => document.getElementById(id).classList.add('active'));
+}
+
+async function callClaude(messages, system) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system, messages })
+  });
+  if (!res.ok) throw new Error(`Claude ${res.status}`);
+  return (await res.json()).content[0].text;
+}
+
+async function searchGitHub(kw) {
+  const k = getKeys();
+  const headers = { 'Accept': 'application/vnd.github.v3+json' };
+  if (k.github) headers['Authorization'] = `token ${k.github}`;
+  const res = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(kw)}&sort=stars&order=desc&per_page=5`, { headers });
+  if (!res.ok) throw new Error(`GitHub ${res.status}`);
+  return (await res.json()).items || [];
+}
+
+async function getReadme(owner, repo) {
+  const k = getKeys();
+  const headers = { 'Accept': 'application/vnd.github.v3+json' };
+  if (k.github) headers['Authorization'] = `token ${k.github}`;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, { headers });
+    if (!res.ok) return '';
+    const d = await res.json();
+    return atob(d.content.replace(/\n/g,'')).replace(/!\[.*?\]\(.*?\)/g,'').replace(/<[^>]+>/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0,3000);
+  } catch { return ''; }
+}
+
+async function startFlow() {
+  const k = getKeys();
+  if (!k.claude) { document.getElementById('noKeyWarn').classList.add('show'); toggleSettings(); return; }
+  const problem = document.getElementById('problemInput').value.trim();
+  if (!problem) return;
+  state.problem = problem;
+  activateSteps('step0','step1');
+  document.getElementById('step1Status').style.display = 'flex';
+  document.getElementById('confirmBubble').style.display = 'none';
+  document.getElementById('runBtn').disabled = true;
+  try {
+    const reply = await callClaude(
+      [{ role:'user', content:problem }],
+      `사용자가 해결하고 싶은 문제를 설명했어. 이해한 내용을 한국어로 1~2문장으로 요약해줘.
+규칙: 반드시 "이렇게 이해했어요: "로 시작. 무엇을→어떻게→결과 순서. 해결 방법·기술 추천·질문 절대 금지. 사용자가 말한 내용만. 쉬운 말로.`
+    );
+    state.understanding = reply;
+    document.getElementById('step1Status').style.display = 'none';
+    document.getElementById('confirmText').textContent = reply;
+    document.getElementById('confirmBubble').style.display = 'block';
+  } catch(e) {
+    document.getElementById('step1Status').querySelector('span').textContent = '오류: ' + e.message;
+    document.getElementById('runBtn').disabled = false;
+  }
+}
+
+async function confirmed() {
+  activateSteps('step0','step1','step2');
+  document.getElementById('analysisBox').style.display = 'none';
+  document.getElementById('questionsArea').innerHTML = '<div style="color:#555550;font-size:12px;padding:0.5rem 0">분석 중...</div>';
+  try {
+    const raw = await callClaude(
+      [{ role:'user', content: state.problem }],
+      `사용자 문제를 분석해서 JSON만 반환해. 마크다운 없이.
+{"analysis":"이 문제 유형에 GitHub에 어떤 레포가 많은지 한 문장","env_recommended":"python|node|browser|server","env_reason":"왜 그 환경을 추천하는지 한 문장","data_recommended":"manual|api|unknown","output_recommended":"display|file|alert|auto"}`
+    );
+    let parsed = null;
+    try { parsed = JSON.parse(raw.replace(/```json?|```/g,'').trim()); } catch {}
+    state.analysis = parsed;
+    if (parsed?.analysis) {
+      document.getElementById('analysisText').textContent = parsed.analysis;
+      document.getElementById('analysisBox').style.display = 'block';
+    }
+    renderQuestions(parsed);
+  } catch { renderQuestions(null); }
+}
+
+function notConfirmed() {
+  activateSteps('step0');
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('problemInput').focus();
+}
+
+const IMPACTS = {
+  python: 'Python 기반 레포 위주로 검색돼요 → 스크립트, 데이터 처리, 자동화 레포가 많이 나와요. 설치가 필요한 레포도 포함돼요.',
+  node: 'Node.js 기반 레포 위주로 검색돼요 → 웹 연동, API 처리 레포가 나와요.',
+  browser: '브라우저 전용 레포만 필터링돼요 → 설치 없이 쓸 수 있는 레포로 좁혀지지만 결과가 적을 수 있어요.',
+  server: '서버/클라우드 환경 레포까지 포함돼요 → 스케줄러, 자동 반복 실행 레포도 나와요.',
+  multi: '여러 환경이 선택됐어요 → Claude가 더 적합한 쪽으로 판단해줘요.',
+  none: '환경 미선택 → 모든 유형을 검색하지만 적합도 판단이 어려워질 수 있어요.'
+};
+
+function getImpact(checked) {
+  if (!checked.length) return IMPACTS.none;
+  if (checked.includes('browser')) return IMPACTS.browser;
+  if (checked.length > 1) return IMPACTS.multi;
+  return IMPACTS[checked[0]] || IMPACTS.none;
+}
+
+function renderQuestions(a) {
+  const rec = a?.env_recommended || null;
+  const envOpts = [
+    { v:'python', l:'Python 가능 (설치 가능)' },
+    { v:'node', l:'Node.js 가능 (설치 가능)' },
+    { v:'server', l:'서버 / 클라우드 환경 있음' },
+    { v:'browser', l:'브라우저만 있음 (설치 불가)' },
+  ];
+  const dataRec = a?.data_recommended || null;
+  const dataOpts = [
+    { v:'manual', l:'직접 입력하거나 파일로 갖고 있어요' },
+    { v:'api', l:'API나 웹사이트에서 가져와야 해요' },
+    { v:'unknown', l:'아직 모르겠어요' },
+  ];
+  const outRec = a?.output_recommended || null;
+  const outOpts = [
+    { v:'display', l:'화면에 표시되면 돼요' },
+    { v:'file', l:'파일(엑셀, CSV 등)로 저장하고 싶어요' },
+    { v:'alert', l:'조건이 되면 알림을 받고 싶어요' },
+    { v:'auto', l:'자동으로 반복 실행되면 좋겠어요' },
+  ];
+
+  document.getElementById('questionsArea').innerHTML = `
+    <div class="q-item">
+      <div class="q-label">코드 실행 환경이 어떻게 돼요? <span style="color:#555550;font-size:12px">(여러 개 선택 가능)</span></div>
+      <div class="q-reason">이 선택에 따라 검색되는 레포 유형이 달라져요. 브라우저만 있으면 설치형 레포가 걸러져요.</div>
+      ${rec && a?.env_reason ? `<div class="rec-hint">💡 ${a.env_reason}</div>` : ''}
+      <div class="checkbox-group" id="envGroup">
+        ${envOpts.map(o=>`
+          <label class="cb-item${rec===o.v?' recommended':''}" id="env-${o.v}">
+            <input type="checkbox" value="${o.v}" onchange="onEnvChange()">
+            <span class="cb-label">${o.l}</span>
+            ${rec===o.v?'<span class="rec-badge">추천</span>':''}
+          </label>`).join('')}
+      </div>
+      <div class="impact-box" id="envImpact"></div>
+    </div>
+
+    <div class="q-item">
+      <div class="q-label">데이터는 어디서 가져와요?</div>
+      <div class="q-reason">데이터 출처에 따라 필요한 라이브러리가 달라요. 파일 읽기만 하면 되는지, API 연동이 필요한지 차이예요.</div>
+      <div class="checkbox-group">
+        ${dataOpts.map(o=>`
+          <label class="cb-item${dataRec===o.v?' recommended':''}" id="data-${o.v}">
+            <input type="radio" name="q_data" value="${o.v}" onchange="onRadioChange('q_data')">
+            <span class="cb-label">${o.l}</span>
+            ${dataRec===o.v?'<span class="rec-badge">추천</span>':''}
+          </label>`).join('')}
+      </div>
+    </div>
+
+    <div class="q-item">
+      <div class="q-label">결과물이 뭐예요?</div>
+      <div class="q-reason">화면 표시와 파일 저장은 완전히 다른 구조예요. 자동 반복이면 스케줄러가 있는 레포가 필요해요.</div>
+      <div class="checkbox-group">
+        ${outOpts.map(o=>`
+          <label class="cb-item${outRec===o.v?' recommended':''}" id="out-${o.v}">
+            <input type="radio" name="q_output" value="${o.v}" onchange="onRadioChange('q_output')">
+            <span class="cb-label">${o.l}</span>
+            ${outRec===o.v?'<span class="rec-badge">추천</span>':''}
+          </label>`).join('')}
+      </div>
+    </div>
+  `;
+
+  // 추천 기본 선택
+  if (rec) { const el = document.querySelector(`#envGroup input[value="${rec}"]`); if(el){el.checked=true;el.closest('.cb-item').classList.add('checked');} }
+  if (dataRec) { const el = document.querySelector(`input[name="q_data"][value="${dataRec}"]`); if(el){el.checked=true;el.closest('.cb-item').classList.add('checked');} }
+  if (outRec) { const el = document.querySelector(`input[name="q_output"][value="${outRec}"]`); if(el){el.checked=true;el.closest('.cb-item').classList.add('checked');} }
+  onEnvChange();
+}
+
+function onEnvChange() {
+  const checked = Array.from(document.querySelectorAll('#envGroup input:checked')).map(i=>i.value);
+  document.querySelectorAll('#envGroup input').forEach(cb => cb.closest('.cb-item').classList.toggle('checked', cb.checked));
+  const box = document.getElementById('envImpact');
+  if (!box) return;
+  if (!checked.length) { box.classList.remove('show'); return; }
+  box.textContent = getImpact(checked);
+  box.classList.add('show');
+}
+
+function onRadioChange(name) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.closest('.cb-item').classList.toggle('checked', r.checked));
+}
+
+async function submitSituation() {
+  const envChecked = Array.from(document.querySelectorAll('#envGroup input:checked')).map(i=>i.value);
+  const dataVal = document.querySelector('input[name="q_data"]:checked')?.value || 'unknown';
+  const outVal = document.querySelector('input[name="q_output"]:checked')?.value || 'display';
+  state.situation = { env: envChecked.join(',') || 'unknown', data: dataVal, output: outVal };
+
+  activateSteps('step0','step1','step2','step3');
+  document.getElementById('searchStatus').style.display = 'flex';
+  document.getElementById('keywordsDisplay').style.display = 'none';
+
+  try {
+    document.getElementById('searchStatusText').textContent = 'Claude가 검색 키워드 추출 중...';
+    const kwRaw = await callClaude(
+      [{ role:'user', content:`문제: ${state.problem}\n이해 요약: ${state.understanding}` }],
+      `이 문제를 GitHub에서 검색할 영어 키워드 3~5개를 추출해줘. JSON 배열만 반환해. 마크다운 없이. 예: ["vessel tracking","AIS parser"]`
+    );
+    let kws = [];
+    try { kws = JSON.parse(kwRaw.replace(/```json?|```/g,'').trim()); } catch {
+      kws = kwRaw.match(/"([^"]+)"/g)?.map(k=>k.replace(/"/g,'')) || [state.problem.split(' ').slice(0,3).join(' ')];
+    }
+    state.keywords = kws;
+    document.getElementById('keywordsList').innerHTML = kws.map(k=>`<span class="keyword">${k}</span>`).join('');
+    document.getElementById('keywordsDisplay').style.display = 'block';
+
+    document.getElementById('searchStatusText').textContent = 'GitHub 레포 검색 중...';
+    let all = [];
+    for (const kw of kws.slice(0,3)) { all.push(...await searchGitHub(kw)); }
+    const seen = new Set();
+    all = all.filter(r=>{ if(seen.has(r.id)) return false; seen.add(r.id); return true; });
+    all = all.sort((a,b)=>b.stargazers_count-a.stargazers_count).slice(0,8);
+
+    document.getElementById('searchStatusText').textContent = 'README 분석 중...';
+    const withReadme = await Promise.all(all.slice(0,6).map(async r=>({...r, readme: await getReadme(r.owner.login, r.name)})));
+
+    document.getElementById('searchStatusText').textContent = 'Claude가 적합도 판단 중...';
+    const sit = `실행 환경: ${state.situation.env}, 데이터: ${state.situation.data}, 결과물: ${state.situation.output}`;
+    const summaries = withReadme.map((r,i)=>`[${i+1}] ${r.full_name}\n설명: ${r.description||'없음'}\n스타: ${r.stargazers_count}, 언어: ${r.language||'?'}, 업데이트: ${r.updated_at?.slice(0,10)}\nREADME: ${r.readme?.slice(0,500)||'없음'}`).join('\n---\n');
+
+    const jRaw = await callClaude(
+      [{ role:'user', content:`문제: ${state.problem}\n상황: ${sit}\n\n${summaries}` }],
+      `각 레포를 평가해서 JSON 배열만 반환해. 마크다운 없이.
+[{"index":1,"verdict":"pass|warn|fail","reason":"소거 근거 포함 한 문장","filter1":true|false,"filter2":true|false,"filter3":true|false}]
+filter1: 문제 유형 관련. filter2: 활성 프로젝트(최근1년+스타50+). filter3: 사용자 상황 적용 가능.`
+    );
+    let verdicts = [];
+    try { verdicts = JSON.parse(jRaw.replace(/```json?|```/g,'').trim()); } catch {}
+
+    const passCount = verdicts.filter(v=>v.verdict==='pass').length;
+    const conclusion = await callClaude(
+      [{ role:'user', content:`문제: ${state.problem}\n상황: ${sit}\npass ${passCount}개` }],
+      `탐색 결과 결론을 2~3문장으로. 한국어. pass 없으면 이유와 방향 제시. pass 있으면 어떤 부분을 쓰면 되는지. 쉬운 말로.`
+    );
+
+    state.repos = withReadme.map((r,i)=>({...r, verdict: verdicts[i]||{verdict:'warn',reason:'판단 불가',filter1:false,filter2:false,filter3:false}}));
+    renderResults(state.repos, conclusion);
+  } catch(e) {
+    document.getElementById('searchStatusText').textContent = '오류: ' + e.message;
+  }
+}
+
+function renderResults(repos, conclusion) {
+  activateSteps('step0','step1','step2','step3','step4');
+  document.getElementById('step3').classList.add('active');
+  document.getElementById('reposGrid').innerHTML = repos.map(r=>{
+    const v = r.verdict;
+    return `<div class="repo-card ${v.verdict}">
+      <div class="filter-badges">
+        <span class="badge ${v.filter1?'ok':'ng'}">유형 ${v.filter1?'✓':'✗'}</span>
+        <span class="badge ${v.filter2?'ok':'ng'}">활성 ${v.filter2?'✓':'✗'}</span>
+        <span class="badge ${v.filter3?'ok':'ng'}">상황 ${v.filter3?'✓':'✗'}</span>
+      </div>
+      <div class="repo-header">
+        <a class="repo-name" href="https://github.com/${r.full_name}" target="_blank">${r.full_name}</a>
+        <div class="repo-meta"><span>★ ${r.stargazers_count?.toLocaleString()||0}</span><span>${r.language||'?'}</span><span>${r.updated_at?.slice(0,10)||'?'}</span></div>
+      </div>
+      <div class="repo-desc">${r.description||'설명 없음'}</div>
+      <div class="verdict ${v.verdict}">${v.reason||''}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('conclusionText').innerHTML = conclusion.split('\n').filter(Boolean).map(p=>`<p>${p}</p>`).join('');
+  document.getElementById('conclusionBox').style.display = 'block';
+}
+
+function resetAll() {
+  state = { problem:'', understanding:'', analysis:null, keywords:[], situation:{}, repos:[] };
+  document.getElementById('problemInput').value = '';
+  document.getElementById('runBtn').disabled = false;
+  STEPS.forEach(s=>document.getElementById(s).classList.remove('active'));
+  document.getElementById('step0').classList.add('active');
+  document.getElementById('step1Status').style.display = 'flex';
+  document.getElementById('confirmBubble').style.display = 'none';
+  document.getElementById('reposGrid').innerHTML = '';
+  document.getElementById('conclusionBox').style.display = 'none';
+}
+
+window.addEventListener('load', ()=>{
+  if(!getKeys().claude) document.getElementById('noKeyWarn').classList.add('show');
+  const ta = document.getElementById('problemInput');
+  ta.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); startFlow(); }
+  });
+});
+</script>
+</body>
+</html>
