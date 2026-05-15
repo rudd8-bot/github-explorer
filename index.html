@@ -249,7 +249,7 @@ async function startFlow() {
   try {
     const reply = await callClaude(
       [{ role:'user', content:problem }],
-      `사용자가 해결하고 싶은 문제를 설명했어. 이해한 내용을 한국어로 1~2문장으로 요약해줘.\n규칙: 반드시 "이렇게 이해했어요: "로 시작. 무엇을→어떻게→결과 순서. 해결 방법·기술 추천·질문 절대 금지.`
+      `사용자가 해결하고 싶은 문제를 설명했다. 사용자의 원문에서 드러난 업무 도메인, 대상 데이터, 원하는 자동화/탐색 결과를 보존해서 한국어 1~2문장으로 요약해라.\n\n규칙:\n- 반드시 "이렇게 이해했어요: "로 시작한다.\n- 반드시 "무엇을 → 어떻게 → 결과" 순서를 따른다.\n- 사용자의 도메인을 범용어로 뭉개지 않는다. 예: AI 에이전트는 "AI 에이전트/LLM 에이전트"로, 선박은 "선박/AIS/해운" 맥락으로, 유튜브 자막은 "YouTube transcript/subtitle" 맥락으로 유지한다.\n- 해결 방법, 기술 추천, 라이브러리명, 추가 질문, 추정 기능 제안은 절대 쓰지 않는다.\n- 사용자가 말하지 않은 세부 조건을 만들어내지 않는다.`
     );
     state.understanding = reply;
     document.getElementById('step1Status').style.display = 'none';
@@ -268,7 +268,7 @@ async function confirmed() {
   try {
     const raw = await callClaude(
       [{ role:'user', content: state.problem }],
-      `사용자 문제를 분석해서 JSON만 반환해. 마크다운 없이.\n{"analysis":"이 문제 유형에 GitHub에 어떤 레포가 많은지 한 문장","env_recommended":"python|node|browser|server","env_reason":"왜 그 환경을 추천하는지 한 문장","data_recommended":"manual|api|unknown","output_recommended":"display|file|alert|auto"}`
+      `사용자 문제를 GitHub 레포 탐색 관점에서 분석해서 JSON만 반환해라. 마크다운, 설명문, 코드블록은 금지한다.\n\n반환 형식은 반드시 아래 스키마와 키 이름을 그대로 사용한다.\n{"analysis":"이 문제 유형에 GitHub에 어떤 레포가 많은지 한 문장","env_recommended":"python|node|browser|server","env_reason":"왜 그 환경을 추천하는지 한 문장","data_recommended":"manual|api|unknown","output_recommended":"display|file|alert|auto"}\n\n출력 제한:\n- JSON 객체에는 위 5개 키만 포함한다. 다른 키를 추가하거나 같은 키를 반복하지 않는다.\n- data_recommended 값에는 manual, api, unknown 중 하나만 쓰고, 이유 문장을 넣지 않는다.\n- enum 값은 파이프 문자 전체가 아니라 선택지 중 정확히 하나만 쓴다.\n- 첫 글자는 {, 마지막 글자는 }여야 한다.\n\n판단 규칙:\n- 먼저 사용자의 핵심 도메인을 식별하고, analysis에 그 도메인을 명시한다. 예: LLM/AI 에이전트, AIS/선박 추적, YouTube 자막/요약.\n- 도메인을 범용 작업명으로 축소하지 않는다. 예: "AI 에이전트 비교"를 일반 benchmarking이나 HTTP 성능 테스트로 해석하지 않는다.\n- GitHub에 많을 법한 레포 유형은 "도메인 + 기능" 형태로 쓴다. 예: LLM agent evaluation, AIS vessel tracking, YouTube transcript summarization.`
     );
     let parsed = null;
     try { parsed = JSON.parse(raw.replace(/```json?|```/g,'').trim()); } catch {}
@@ -397,19 +397,30 @@ async function submitSituation() {
     document.getElementById('searchStatusText').textContent = 'Claude가 검색 키워드 추출 중...';
     const kwRaw = await callClaude(
       [{ role:'user', content:`문제: ${state.problem}\n이해 요약: ${state.understanding}` }],
-      `이 문제를 GitHub에서 검색할 영어 키워드 3~5개를 추출해줘. JSON 배열만 반환해. 마크다운 없이. 예: ["vessel tracking","AIS parser"]`
+      `이 문제를 GitHub에서 검색할 영어 키워드를 도메인 혼동 없이 추출해라. 순수 JSON 객체만 반환하고 마크다운, 설명문, 코드블록, \`\`\`json fence는 절대 쓰지 않는다.\n\n반환 형식은 반드시 아래 스키마를 따른다.\n{"include":["keyword 1","keyword 2","keyword 3"],"exclude":["excluded term 1","excluded term 2"],"query":"github search query"}\n\n규칙:\n- include는 3~5개이며, 각 항목은 GitHub 검색에 바로 쓸 수 있는 영어 구문이다.\n- include의 모든 항목에는 사용자의 도메인을 고정하는 단어를 최소 1개 포함한다. 예: LLM/AI 에이전트 문제는 LLM, AI agent, agent eval 중 하나를 포함하고, 선박 문제는 AIS, vessel, maritime 중 하나를 포함하며, 유튜브 문제는 YouTube, transcript, subtitle 중 하나를 포함한다.\n- 범용어만 단독으로 쓰지 않는다. 금지 예: benchmarking tool, performance evaluation, tracking, summarization, automation.\n- exclude는 3~6개이며, 같은 단어가 다른 도메인에서 불러올 수 있는 오탐 키워드를 영어로 적는다.\n- 첫 글자는 {, 마지막 글자는 }여야 한다.`
     );
-    let kws = [];
-    try { kws = JSON.parse(kwRaw.replace(/```json?|```/g,'').trim()); } catch {
-      kws = kwRaw.match(/"([^"]+)"/g)?.map(k=>k.replace(/"/g,'')) || [state.problem.split(' ').slice(0,3).join(' ')];
+    let kwObj = { include: [], exclude: [], query: '' };
+    try {
+      const parsed = JSON.parse(kwRaw.replace(/```json?|```/g,'').trim());
+      if (Array.isArray(parsed)) {
+        kwObj = { include: parsed, exclude: [], query: parsed.map(x=>`"${x}"`).join(' OR ') };
+      } else {
+        kwObj.include = Array.isArray(parsed.include) ? parsed.include : [];
+        kwObj.exclude = Array.isArray(parsed.exclude) ? parsed.exclude : [];
+        kwObj.query = typeof parsed.query === 'string' && parsed.query.trim() ? parsed.query.trim()
+          : kwObj.include.map(x=>`"${x}"`).join(' OR ');
+      }
+    } catch {
+      kwObj.include = [state.problem.split(' ').slice(0,3).join(' ')];
+      kwObj.query = kwObj.include[0];
     }
-    state.keywords = kws;
-    document.getElementById('keywordsList').innerHTML = kws.map(k=>`<span class="keyword">${k}</span>`).join('');
+    state.keywords = kwObj.include;
+    document.getElementById('keywordsList').innerHTML = kwObj.include.map(k=>`<span class="keyword">${k}</span>`).join('');
     document.getElementById('keywordsDisplay').style.display = 'block';
 
     document.getElementById('searchStatusText').textContent = 'GitHub 레포 검색 중...';
     let all = [];
-    for (const kw of kws.slice(0,3)) { all.push(...await searchGitHub(kw)); }
+    for (const kw of kwObj.include.slice(0,3)) { all.push(...await searchGitHub(kw)); }
     const seen = new Set();
     all = all.filter(r=>{ if(seen.has(r.id)) return false; seen.add(r.id); return true; });
     all = all.sort((a,b)=>b.stargazers_count-a.stargazers_count).slice(0,8);
@@ -423,7 +434,7 @@ async function submitSituation() {
 
     const jRaw = await callClaude(
       [{ role:'user', content:`문제: ${state.problem}\n상황: ${sit}\n\n${summaries}` }],
-      `각 레포를 평가해서 JSON 배열만 반환해. 마크다운 없이.\n[{"index":1,"verdict":"pass|warn|fail","reason":"소거 근거 한 문장","filter1":true,"filter2":true,"filter3":true}]\nfilter1:문제유형. filter2:활성프로젝트. filter3:사용자상황적합.`
+      `각 GitHub 레포가 사용자 문제에 적합한지 평가해서 JSON 배열만 반환해라. 마크다운, 설명문, 코드블록은 금지한다.\n\n반환 형식은 반드시 아래 스키마를 따른다.\n[{"index":1,"verdict":"pass|warn|fail","reason":"소거 또는 통과 근거 한 문장","filter1":true,"filter2":true,"filter3":true}]\n\n평가 기준:\n- filter1 문제유형: 레포의 설명, README 요약, 토픽, 이름이 사용자 도메인과 기능에 직접 연결되면 true다. 도메인이 다르면 false다. 예: LLM 에이전트 비교 문제에서 HTTP load testing, CPU benchmark, generic monitoring 레포는 false다.\n- filter2 활성프로젝트: 최근 업데이트, 유지보수 흔적, stars/forks/issues 등 활동성이 충분하면 true다.\n- filter3 사용자상황적합: 사용자의 목표 산출물과 실행 흐름에 맞으면 true다.\n- verdict는 세 필터가 모두 true면 pass, 핵심 도메인은 맞지만 일부 불확실성이 있으면 warn, 도메인이 다르거나 핵심 기능이 없으면 fail이다.\n- reason은 반드시 25~45자 내외의 한국어 한 문장으로 쓴다.\n- reason에는 레포의 구체 단서 2개 이상을 포함한다. 예: "LLM 에이전트 평가 기능은 맞지만 마지막 업데이트가 오래되고 CLI 전용이라 주의가 필요합니다."\n- "좋음", "부적합", "관련 있음"처럼 추상적인 표현만 쓰지 않는다.\n- 입력 목록의 index를 그대로 유지하고, 입력에 없는 index를 만들지 않는다.`
     );
     let verdicts = [];
     try { verdicts = JSON.parse(jRaw.replace(/```json?|```/g,'').trim()); } catch {}
