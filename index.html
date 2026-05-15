@@ -105,7 +105,7 @@
     <h3>접근 코드 설정</h3>
     <div class="field">
       <label>접근 코드 (App Secret)</label>
-      <input type="password" id="secretInput" placeholder="접근 코드 입력..." />
+      <input type="password" id="secretInput" placeholder="접근 코드 입력..." onkeydown="if(event.key==='Enter') saveSecret()" />
     </div>
     <button class="save-btn" onclick="saveSecret()">저장</button>
   </div>
@@ -200,7 +200,10 @@ async function callClaude(messages, system) {
   });
   if (res.status === 403) throw new Error('접근 코드가 틀렸어요. ⚙ 설정을 확인해 주세요.');
   if (!res.ok) throw new Error(`Claude ${res.status}`);
-  return (await res.json()).content[0].text;
+  const data = await res.json();
+  const block = data.content?.find(b => b.type === 'text');
+  if (!block) throw new Error('Claude 응답이 비어있어요.');
+  return block.text;
 }
 
 async function searchGitHub(kw) {
@@ -224,12 +227,18 @@ async function getReadme(owner, repo) {
     });
     if (!res.ok) return '';
     const d = await res.json();
+    if (!d.content) return '';
     return atob(d.content.replace(/\n/g,'')).replace(/!\[.*?\]\(.*?\)/g,'').replace(/<[^>]+>/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0,3000);
   } catch { return ''; }
 }
 
 async function startFlow() {
-  if (!getSecret()) { document.getElementById('noKeyWarn').classList.add('show'); toggleSecret(); return; }
+  if (!getSecret()) {
+    document.getElementById('noKeyWarn').classList.add('show');
+    document.getElementById('secretPanel').classList.add('open');
+    setTimeout(() => document.getElementById('secretInput').focus(), 50);
+    return;
+  }
   const problem = document.getElementById('problemInput').value.trim();
   if (!problem) return;
   state.problem = problem;
@@ -465,6 +474,11 @@ function resetAll() {
   document.getElementById('confirmBubble').style.display = 'none';
   document.getElementById('reposGrid').innerHTML = '';
   document.getElementById('conclusionBox').style.display = 'none';
+  document.getElementById('searchStatus').style.display = 'none';
+  document.getElementById('keywordsDisplay').style.display = 'none';
+  document.getElementById('keywordsList').innerHTML = '';
+  document.getElementById('questionsArea').innerHTML = '<div style="color:#555550;font-size:12px;padding:0.5rem 0">분석 중...</div>';
+  document.getElementById('analysisBox').style.display = 'none';
 }
 
 window.addEventListener('load', ()=>{
