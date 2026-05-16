@@ -2,9 +2,9 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { keywords } = req.body;
-  const pat = process.env.GITHUB_PAT;
+  const pat = process.env.GITHUB_TOKEN;
 
-  if (!pat) return res.status(500).json({ error: 'GITHUB_PAT 환경변수가 없습니다' });
+  if (!pat) return res.status(500).json({ error: 'GITHUB_TOKEN 환경변수가 없습니다' });
   if (!keywords || !keywords.length) return res.status(400).json({ error: 'keywords가 없습니다' });
 
   try {

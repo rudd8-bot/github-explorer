@@ -477,7 +477,7 @@
   <div class="input-section">
     <label class="input-label">// 어떤 문제를 풀고 싶어?</label>
     <div class="input-row">
-      <textarea id="problemInput" placeholder="예: 선박 위치를 자동으로 추적하고 Slack에 알림 보내고 싶어&#10;예: Naver 블로그 검색 결과를 AI로 필터링하고 싶어"></textarea>
+      <textarea id="problemInput" placeholder="예: 선박 위치를 자동으로 추적하고 Slack에 알림 보내고 싶어&#10;예: Naver 블로그 검색 결과를 AI로 필터링하고 싶어" onkeydown="handleEnter(event)"></textarea>
       <button class="btn-primary" id="searchBtn" onclick="startSearch()">탐색 시작</button>
     </div>
     <div class="stack-row">
@@ -530,6 +530,13 @@
 </div>
 
 <script>
+  function handleEnter(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      startSearch();
+    }
+  }
+
   let searchResults = null;
   let extractedKeywords = [];
   let problemText = '';
