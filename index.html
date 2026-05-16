@@ -3,502 +3,807 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GitHub 탐색 도구</title>
+<title>GitHub Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Pretendard:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --border-bright: #2e2e4e;
+    --text: #e0e0f0;
+    --text-dim: #6060a0;
+    --text-muted: #3a3a5a;
+    --accent: #5555ff;
+    --accent-glow: rgba(85,85,255,0.15);
+    --green: #00ff88;
+    --green-dim: rgba(0,255,136,0.1);
+    --yellow: #ffcc00;
+    --red: #ff4466;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Pretendard', sans-serif;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0d0d0d; color: #e8e6e0; font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; min-height: 100vh; line-height: 1.6; }
-  .shell { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
-  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 0.5px solid rgba(255,255,255,0.08); }
-  .logo { font-family: 'Courier New', monospace; font-size: 13px; color: #c8ff6e; letter-spacing: 0.05em; }
-  .logo span { color: #555550; }
-  .secret-panel { display: none; background: #141414; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
-  .secret-panel.open { display: block; }
-  .secret-panel h3 { font-size: 11px; font-family: 'Courier New', monospace; color: #555550; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 1rem; }
-  .field { margin-bottom: 0.75rem; }
-  .field label { display: block; font-size: 12px; color: #888882; margin-bottom: 4px; }
-  .field input { width: 100%; background: #1a1a1a; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 8px 12px; color: #e8e6e0; font-size: 13px; font-family: 'Courier New', monospace; outline: none; transition: border-color 0.15s; }
-  .field input:focus { border-color: #c8ff6e; }
-  .save-btn { background: #c8ff6e; border: none; border-radius: 6px; color: #0d0d0d; font-weight: 600; font-size: 12px; padding: 7px 18px; cursor: pointer; margin-top: 0.5rem; transition: opacity 0.15s; }
-  .save-btn:hover { opacity: 0.85; }
-  .settings-btn { background: none; border: 0.5px solid rgba(255,255,255,0.14); color: #888882; padding: 6px 14px; border-radius: 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
-  .settings-btn:hover { border-color: #c8ff6e; color: #c8ff6e; }
-  .no-key { background: rgba(255,107,107,0.06); border: 0.5px solid rgba(255,107,107,0.2); border-radius: 10px; padding: 0.75rem 1rem; font-size: 12px; color: #ff6b6b; margin-bottom: 1rem; display: none; }
-  .no-key.show { display: block; }
-  .input-area { background: #141414; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
-  .input-label { font-size: 11px; font-family: 'Courier New', monospace; color: #555550; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.75rem; }
-  textarea { width: 100%; background: #1a1a1a; border: 0.5px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 10px 12px; color: #e8e6e0; font-size: 14px; font-family: 'DM Sans', system-ui, sans-serif; resize: none; outline: none; line-height: 1.6; min-height: 80px; }
-  textarea:focus { border-color: rgba(255,255,255,0.25); }
-  textarea::placeholder { color: #555550; }
-  .input-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; }
-  .run-btn { background: #c8ff6e; border: none; border-radius: 6px; color: #0d0d0d; font-weight: 600; font-size: 13px; padding: 8px 22px; cursor: pointer; transition: opacity 0.15s; }
-  .run-btn:hover { opacity: 0.85; }
-  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .step { display: none; margin-bottom: 1.25rem; }
-  .step.active { display: block; }
-  .bubble { background: #141414; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
-  .bubble-label { font-size: 10px; font-family: 'Courier New', monospace; color: #555550; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.5rem; }
-  .bubble p { color: #e8e6e0; line-height: 1.7; }
-  .confirm-row { display: flex; gap: 8px; margin-top: 0.75rem; }
-  .btn-yes { background: #c8ff6e; border: none; border-radius: 6px; color: #0d0d0d; font-size: 12px; font-weight: 600; padding: 7px 18px; cursor: pointer; }
-  .btn-yes:hover { opacity: 0.85; }
-  .btn-no { background: none; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 6px; color: #888882; font-size: 12px; padding: 7px 18px; cursor: pointer; }
-  .btn-no:hover { color: #e8e6e0; }
-  .analysis-box { background: #1a1a1a; border: 0.5px solid rgba(200,255,110,0.18); border-radius: 8px; padding: 0.75rem 1rem; margin: 0.75rem 0 1rem; font-size: 12px; color: #888882; line-height: 1.7; }
-  .analysis-label { font-size: 10px; font-family: 'Courier New', monospace; color: #c8ff6e; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 5px; }
-  .questions { margin-top: 0.75rem; }
-  .q-item { margin-bottom: 1.5rem; }
-  .q-label { font-size: 13px; color: #e8e6e0; line-height: 1.5; margin-bottom: 4px; }
-  .q-reason { font-size: 12px; color: #555550; margin-bottom: 0.6rem; line-height: 1.5; }
-  .rec-hint { font-size: 12px; color: #c8ff6e; background: rgba(200,255,110,0.06); border: 0.5px solid rgba(200,255,110,0.15); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; line-height: 1.5; }
-  .checkbox-group { display: flex; flex-direction: column; gap: 6px; }
-  .cb-item { display: flex; align-items: center; gap: 9px; cursor: pointer; padding: 8px 10px; border-radius: 6px; border: 0.5px solid rgba(255,255,255,0.08); background: #1a1a1a; transition: all 0.15s; user-select: none; }
-  .cb-item:hover { border-color: rgba(255,255,255,0.2); }
-  .cb-item.checked { border-color: rgba(200,255,110,0.35); background: rgba(200,255,110,0.04); }
-  .cb-item.recommended { border-color: rgba(200,255,110,0.22); }
-  .cb-item input { width: 14px; height: 14px; accent-color: #c8ff6e; cursor: pointer; flex-shrink: 0; }
-  .cb-label { font-size: 13px; color: #e8e6e0; flex: 1; }
-  .rec-badge { font-size: 10px; font-family: 'Courier New', monospace; color: #c8ff6e; background: rgba(200,255,110,0.1); border-radius: 3px; padding: 1px 6px; flex-shrink: 0; }
-  .impact-box { margin-top: 0.6rem; padding: 8px 12px; background: #1a1a1a; border-left: 2px solid #c8ff6e; border-radius: 0 6px 6px 0; font-size: 12px; color: #888882; line-height: 1.6; display: none; }
-  .impact-box.show { display: block; }
-  .status-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #141414; border: 0.5px solid rgba(255,255,255,0.08); border-radius: 10px; margin-bottom: 1rem; font-size: 12px; font-family: 'Courier New', monospace; color: #888882; }
-  .spinner { width: 14px; height: 14px; border: 1.5px solid rgba(255,255,255,0.14); border-top-color: #c8ff6e; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .keywords { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.5rem 0; }
-  .keyword { background: rgba(200,255,110,0.08); color: #c8ff6e; border: 0.5px solid rgba(200,255,110,0.2); border-radius: 4px; font-size: 11px; font-family: 'Courier New', monospace; padding: 3px 9px; }
-  .repos-grid { display: flex; flex-direction: column; gap: 0.75rem; }
-  .repo-card { background: #141414; border: 0.5px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 1rem 1.25rem; transition: border-color 0.15s; }
-  .repo-card:hover { border-color: rgba(255,255,255,0.14); }
-  .repo-card.pass { border-left: 2px solid #c8ff6e; }
-  .repo-card.warn { border-left: 2px solid #ffaa44; }
-  .repo-card.fail { border-left: 2px solid #555550; }
-  .repo-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.5rem; gap: 1rem; }
-  .repo-name { font-family: 'Courier New', monospace; font-size: 13px; color: #66aaff; text-decoration: none; }
-  .repo-name:hover { color: #c8ff6e; }
-  .repo-meta { display: flex; gap: 10px; font-size: 11px; font-family: 'Courier New', monospace; color: #555550; flex-shrink: 0; }
-  .repo-desc { font-size: 13px; color: #888882; margin-bottom: 0.75rem; line-height: 1.5; }
-  .filter-badges { display: flex; gap: 6px; margin-bottom: 0.5rem; flex-wrap: wrap; }
-  .badge { font-size: 10px; font-family: 'Courier New', monospace; padding: 2px 8px; border-radius: 4px; }
-  .badge.ok { background: rgba(200,255,110,0.1); color: #c8ff6e; }
-  .badge.ng { background: rgba(255,107,107,0.1); color: #ff6b6b; }
-  .verdict { font-size: 12px; line-height: 1.6; padding: 8px 10px; border-radius: 6px; background: #1a1a1a; }
-  .verdict.pass { color: #c8ff6e; }
-  .verdict.warn { color: #ffaa44; }
-  .verdict.fail { color: #555550; }
-  .conclusion { background: #141414; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 1.25rem; margin-top: 1.5rem; }
-  .conclusion h3 { font-size: 11px; font-family: 'Courier New', monospace; color: #c8ff6e; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.75rem; }
-  .conclusion p { color: #e8e6e0; line-height: 1.7; font-size: 14px; }
-  .conclusion p + p { margin-top: 0.75rem; }
-  .reset-row { margin-top: 1.5rem; }
-  .btn-reset { background: none; border: 0.5px solid rgba(255,255,255,0.14); border-radius: 6px; color: #888882; font-size: 12px; padding: 7px 18px; cursor: pointer; }
-  .btn-reset:hover { color: #e8e6e0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* 배경 그리드 */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(85,85,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(85,85,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 48px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* 헤더 */
+  header {
+    margin-bottom: 48px;
+  }
+
+  .header-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .header-desc {
+    font-size: 14px;
+    color: var(--text-dim);
+    font-weight: 300;
+  }
+
+  /* 입력 영역 */
+  .input-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .input-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  textarea {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border-bright);
+    border-radius: 6px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    resize: none;
+    height: 80px;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.6;
+  }
+
+  textarea::placeholder { color: var(--text-muted); }
+  textarea:focus { border-color: var(--accent); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0 24px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-primary:hover { background: #6666ff; box-shadow: 0 0 20px var(--accent-glow); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* 내 스택 입력 */
+  .stack-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .stack-input {
+    background: var(--bg);
+    border: 1px solid var(--border-bright);
+    border-radius: 4px;
+    padding: 6px 12px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    outline: none;
+    width: 160px;
+    transition: border-color 0.2s;
+  }
+
+  .stack-input:focus { border-color: var(--accent); }
+  .stack-input::placeholder { color: var(--text-muted); }
+
+  .stack-hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    align-self: center;
+  }
+
+  /* 진행 상태 */
+  .progress-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .progress-section.visible { display: block; }
+
+  .progress-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: color 0.3s;
+  }
+
+  .step-item.active { color: var(--accent); }
+  .step-item.done { color: var(--green); }
+  .step-item.error { color: var(--red); }
+
+  .step-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  .step-item.active .step-dot {
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* 키워드 태그 */
+  .keywords-section {
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .keywords-section.visible { display: block; }
+
+  .keywords-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .keyword-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .keyword-tag {
+    background: var(--accent-glow);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 3px;
+  }
+
+  /* 결과 카드 */
+  .results-section {
+    display: none;
+  }
+
+  .results-section.visible { display: block; }
+
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .results-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .results-count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .repo-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .repo-card:hover { border-color: var(--border-bright); }
+
+  .repo-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 12px;
+  }
+
+  .repo-name {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .repo-name a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .repo-name a:hover { color: var(--accent); }
+
+  .repo-meta {
+    display: flex;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .repo-meta span { display: flex; align-items: center; gap: 4px; }
+
+  .repo-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+
+  /* 3단계 판단 */
+  .verdict-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .verdict-item {
+    border-radius: 4px;
+    padding: 8px 10px;
+    border: 1px solid;
+  }
+
+  .verdict-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    opacity: 0.7;
+  }
+
+  .verdict-value {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .verdict-pass { background: var(--green-dim); border-color: rgba(0,255,136,0.3); color: var(--green); }
+  .verdict-partial { background: rgba(255,204,0,0.08); border-color: rgba(255,204,0,0.3); color: var(--yellow); }
+  .verdict-fail { background: rgba(255,68,102,0.08); border-color: rgba(255,68,102,0.3); color: var(--red); }
+
+  .repo-summary {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+    line-height: 1.5;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* 통합 분석 버튼 */
+  .analyze-section {
+    margin-top: 32px;
+    display: none;
+  }
+
+  .analyze-section.visible { display: block; }
+
+  .analyze-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .analyze-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .analyze-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  .btn-analyze {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 6px;
+    padding: 12px 32px;
+    font-family: var(--mono);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-analyze:hover {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 24px var(--accent-glow);
+  }
+
+  .copy-msg {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    margin-top: 10px;
+    display: none;
+  }
+
+  /* 에러 */
+  .error-box {
+    background: rgba(255,68,102,0.08);
+    border: 1px solid rgba(255,68,102,0.3);
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--red);
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .error-box.visible { display: block; }
+
+  /* 반응형 */
+  @media (max-width: 600px) {
+    .verdict-grid { grid-template-columns: 1fr; }
+    .input-row { flex-direction: column; }
+    .btn-primary { padding: 14px; }
+  }
 </style>
 </head>
 <body>
-<div class="shell">
-  <div class="header">
-    <div class="logo">github<span>/</span>explorer<span>.v2</span></div>
-    <button class="settings-btn" onclick="toggleSecret()">⚙ 접근 설정</button>
-  </div>
+<div class="container">
 
-  <!-- APP_SECRET 입력 패널 (API 키 대신) -->
-  <div class="secret-panel" id="secretPanel">
-    <h3>접근 코드 설정</h3>
-    <div class="field">
-      <label>접근 코드 (App Secret)</label>
-      <input type="password" id="secretInput" placeholder="접근 코드 입력..." onkeydown="if(event.key==='Enter') saveSecret()" />
+  <header>
+    <div class="header-tag">// GitHub Explorer v1.0</div>
+    <h1>GitHub<span>_</span>탐색 도구</h1>
+    <p class="header-desc">자연어 문제 → GitHub 레포 탐색 → 3단계 실행 가능성 판단</p>
+  </header>
+
+  <!-- 입력 -->
+  <div class="input-section">
+    <label class="input-label">// 어떤 문제를 풀고 싶어?</label>
+    <div class="input-row">
+      <textarea id="problemInput" placeholder="예: 선박 위치를 자동으로 추적하고 Slack에 알림 보내고 싶어&#10;예: Naver 블로그 검색 결과를 AI로 필터링하고 싶어"></textarea>
+      <button class="btn-primary" id="searchBtn" onclick="startSearch()">탐색 시작</button>
     </div>
-    <button class="save-btn" onclick="saveSecret()">저장</button>
+    <div class="stack-row">
+      <input class="stack-input" id="stackInput" placeholder="내 스택 (예: React, Vercel)" value="React / Vercel / Claude Haiku API">
+      <span class="stack-hint">← 적용 가능성 판단에 사용됨</span>
+    </div>
   </div>
 
-  <div class="no-key" id="noKeyWarn">접근 코드가 없어요. 위의 ⚙ 접근 설정에서 코드를 입력해 주세요.</div>
+  <!-- 에러 -->
+  <div class="error-box" id="errorBox"></div>
 
-  <div class="step active" id="step0">
-    <div class="input-area">
-      <div class="input-label">문제 / 아이디어 입력</div>
-      <textarea id="problemInput" rows="3" placeholder="예: 선박 위치를 자동으로 추적해서 엑셀에 저장하고 싶어"></textarea>
-      <div class="input-footer">
-        <span style="font-size:11px;color:#555550;font-family:'Courier New',monospace;align-self:center">Shift+Enter 줄바꿈</span>
-        <button class="run-btn" id="runBtn" onclick="startFlow()">탐색 시작 →</button>
+  <!-- 진행 상태 -->
+  <div class="progress-section" id="progressSection">
+    <div class="progress-steps">
+      <div class="step-item" id="step1"><div class="step-dot"></div>Claude → 검색 키워드 추출 중</div>
+      <div class="step-item" id="step2"><div class="step-dot"></div>GitHub → 레포 후보 수집 중</div>
+      <div class="step-item" id="step3"><div class="step-dot"></div>Tavily → README 전문 수집 중 (상위 5개)</div>
+      <div class="step-item" id="step4"><div class="step-dot"></div>Claude → 3단계 실행 가능성 판단 중</div>
+    </div>
+  </div>
+
+  <!-- 키워드 -->
+  <div class="keywords-section" id="keywordsSection">
+    <div class="keywords-label">// 추출된 검색 키워드</div>
+    <div class="keyword-tags" id="keywordTags"></div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="results-section" id="resultsSection">
+    <div class="results-header">
+      <div class="results-label">// 탐색 결과</div>
+      <div class="results-count" id="resultsCount"></div>
+    </div>
+    <div id="repoCards"></div>
+  </div>
+
+  <!-- 통합 분석 -->
+  <div class="analyze-section" id="analyzeSection">
+    <div class="analyze-box">
+      <div class="analyze-title">// 통합 분석 프롬프트 생성</div>
+      <div class="analyze-desc">
+        탐색 결과 전체를 Claude 10단계 분석 프롬프트로 변환합니다<br>
+        클립보드에 복사 후 새 Claude 대화에 붙여넣기하세요
       </div>
+      <button class="btn-analyze" onclick="copyAnalysisPrompt()">통합 분석 프롬프트 복사</button>
+      <div class="copy-msg" id="copyMsg">✓ 클립보드에 복사됨 — 새 Claude 대화에 붙여넣기하세요</div>
     </div>
   </div>
 
-  <div class="step" id="step1">
-    <div class="status-bar" id="step1Status"><div class="spinner"></div><span>문제 이해 중...</span></div>
-    <div class="bubble" id="confirmBubble" style="display:none">
-      <div class="bubble-label">Claude</div>
-      <p id="confirmText"></p>
-      <div class="confirm-row">
-        <button class="btn-yes" onclick="confirmed()">맞아</button>
-        <button class="btn-no" onclick="notConfirmed()">아니야, 다시 설명할게</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="step" id="step2">
-    <div class="bubble">
-      <div class="bubble-label">Claude</div>
-      <p>몇 가지만 알려주면 더 맞는 결과를 찾을 수 있어요.</p>
-      <div class="analysis-box" id="analysisBox" style="display:none">
-        <div class="analysis-label">문제 분석</div>
-        <div id="analysisText"></div>
-      </div>
-      <div class="questions" id="questionsArea"><div style="color:#555550;font-size:12px;padding:0.5rem 0">분석 중...</div></div>
-      <div style="margin-top:1rem"><button class="btn-yes" onclick="submitSituation()">검색 시작</button></div>
-    </div>
-  </div>
-
-  <div class="step" id="step3">
-    <div class="status-bar" id="searchStatus"><div class="spinner"></div><span id="searchStatusText">GitHub 검색 중...</span></div>
-    <div id="keywordsDisplay" style="display:none;margin-bottom:1rem">
-      <div style="font-size:11px;font-family:'Courier New',monospace;color:#555550;margin-bottom:6px">검색 키워드</div>
-      <div class="keywords" id="keywordsList"></div>
-    </div>
-  </div>
-
-  <div class="step" id="step4">
-    <div style="font-size:11px;font-family:'Courier New',monospace;color:#555550;margin-bottom:0.75rem;letter-spacing:0.06em;text-transform:uppercase">탐색 결과</div>
-    <div class="repos-grid" id="reposGrid"></div>
-    <div class="conclusion" id="conclusionBox" style="display:none">
-      <h3>결론</h3>
-      <div id="conclusionText"></div>
-    </div>
-    <div class="reset-row"><button class="btn-reset" onclick="resetAll()">← 처음으로</button></div>
-  </div>
 </div>
 
 <script>
-const STEPS = ['step0','step1','step2','step3','step4'];
-let state = { problem:'', understanding:'', analysis:null, keywords:[], situation:{}, repos:[] };
+  let searchResults = null;
+  let extractedKeywords = [];
+  let problemText = '';
+  let stackText = '';
 
-// APP_SECRET 관리 (sessionStorage)
-function getSecret() { return sessionStorage.getItem('app_secret') || ''; }
-function saveSecret() {
-  const v = document.getElementById('secretInput').value.trim();
-  if (!v) return;
-  sessionStorage.setItem('app_secret', v);
-  document.getElementById('secretPanel').classList.remove('open');
-  document.getElementById('noKeyWarn').classList.remove('show');
-  alert('저장됐어요! 탭을 닫으면 자동으로 삭제됩니다.');
-}
-function toggleSecret() {
-  document.getElementById('secretPanel').classList.toggle('open');
-}
+  function setStep(stepNum, status) {
+    const el = document.getElementById('step' + stepNum);
+    el.className = 'step-item ' + status;
+  }
 
-function activateSteps(...ids) {
-  STEPS.forEach(s => document.getElementById(s).classList.remove('active'));
-  ids.forEach(id => document.getElementById(id).classList.add('active'));
-}
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '오류: ' + msg;
+    box.classList.add('visible');
+  }
 
-// API Route 호출 (키 없이 APP_SECRET만 헤더에)
-async function callClaude(messages, system) {
-  const secret = getSecret();
-  const res = await fetch('/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-app-secret': secret },
-    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system, messages })
-  });
-  if (res.status === 403) throw new Error('접근 코드가 틀렸어요. ⚙ 설정을 확인해 주세요.');
-  if (!res.ok) throw new Error(`Claude ${res.status}`);
-  const data = await res.json();
-  const block = data.content?.find(b => b.type === 'text');
-  if (!block) throw new Error('Claude 응답이 비어있어요.');
-  return block.text;
-}
+  function hideError() {
+    document.getElementById('errorBox').classList.remove('visible');
+  }
 
-async function searchGitHub(kw) {
-  const secret = getSecret();
-  const res = await fetch('/api/github', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-app-secret': secret },
-    body: JSON.stringify({ type: 'search', query: kw })
-  });
-  if (!res.ok) throw new Error(`GitHub ${res.status}`);
-  return (await res.json()).items || [];
-}
+  async function startSearch() {
+    problemText = document.getElementById('problemInput').value.trim();
+    stackText = document.getElementById('stackInput').value.trim();
 
-async function getReadme(owner, repo) {
-  const secret = getSecret();
-  try {
+    if (!problemText) {
+      showError('문제를 입력해주세요');
+      return;
+    }
+
+    hideError();
+    document.getElementById('searchBtn').disabled = true;
+    document.getElementById('progressSection').classList.add('visible');
+    document.getElementById('keywordsSection').classList.remove('visible');
+    document.getElementById('resultsSection').classList.remove('visible');
+    document.getElementById('analyzeSection').classList.remove('visible');
+    document.getElementById('repoCards').innerHTML = '';
+    searchResults = null;
+
+    try {
+      // 1단계: 키워드 추출
+      setStep(1, 'active');
+      const keywords = await extractKeywords(problemText, stackText);
+      extractedKeywords = keywords;
+      setStep(1, 'done');
+
+      // 키워드 표시
+      const tagsEl = document.getElementById('keywordTags');
+      tagsEl.innerHTML = keywords.map(k => `<span class="keyword-tag">${k}</span>`).join('');
+      document.getElementById('keywordsSection').classList.add('visible');
+
+      // 2단계: GitHub 검색
+      setStep(2, 'active');
+      const repos = await searchGitHub(keywords);
+      setStep(2, 'done');
+
+      // 3단계: Tavily README 수집
+      setStep(3, 'active');
+      const top5 = repos.slice(0, 5);
+      const enriched = await enrichWithTavily(top5);
+      setStep(3, 'done');
+
+      // 4단계: Claude 판단
+      setStep(4, 'active');
+      const judged = await judgeRepos(enriched, repos.slice(5), problemText, stackText);
+      setStep(4, 'done');
+
+      searchResults = judged;
+      renderResults(judged);
+
+    } catch (err) {
+      showError(err.message || '탐색 중 오류가 발생했습니다');
+      console.error(err);
+    } finally {
+      document.getElementById('searchBtn').disabled = false;
+    }
+  }
+
+  // 1단계: 키워드 추출
+  async function extractKeywords(problem, stack) {
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        task: 'extract_keywords',
+        problem,
+        stack
+      })
+    });
+    if (!res.ok) throw new Error('키워드 추출 실패: ' + await res.text());
+    const data = await res.json();
+    return data.keywords;
+  }
+
+  // 2단계: GitHub 검색
+  async function searchGitHub(keywords) {
     const res = await fetch('/api/github', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-app-secret': secret },
-      body: JSON.stringify({ type: 'readme', owner, repo })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keywords })
     });
-    if (!res.ok) return '';
-    const d = await res.json();
-    if (!d.content) return '';
-    return atob(d.content.replace(/\n/g,'')).replace(/!\[.*?\]\(.*?\)/g,'').replace(/<[^>]+>/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0,3000);
-  } catch { return ''; }
-}
-
-async function startFlow() {
-  if (!getSecret()) {
-    document.getElementById('noKeyWarn').classList.add('show');
-    document.getElementById('secretPanel').classList.add('open');
-    setTimeout(() => document.getElementById('secretInput').focus(), 50);
-    return;
+    if (!res.ok) throw new Error('GitHub 검색 실패: ' + await res.text());
+    const data = await res.json();
+    return data.repos;
   }
-  const problem = document.getElementById('problemInput').value.trim();
-  if (!problem) return;
-  state.problem = problem;
-  activateSteps('step0','step1');
-  document.getElementById('step1Status').style.display = 'flex';
-  document.getElementById('confirmBubble').style.display = 'none';
-  document.getElementById('runBtn').disabled = true;
-  try {
-    const reply = await callClaude(
-      [{ role:'user', content:problem }],
-      `사용자가 해결하고 싶은 문제를 설명했다. 사용자의 원문에서 드러난 업무 도메인, 대상 데이터, 원하는 자동화/탐색 결과를 보존해서 한국어 1~2문장으로 요약해라.\n\n규칙:\n- 반드시 "이렇게 이해했어요: "로 시작한다.\n- 반드시 "무엇을 → 어떻게 → 결과" 순서를 따른다.\n- 사용자의 도메인을 범용어로 뭉개지 않는다. 예: AI 에이전트는 "AI 에이전트/LLM 에이전트"로, 선박은 "선박/AIS/해운" 맥락으로, 유튜브 자막은 "YouTube transcript/subtitle" 맥락으로 유지한다.\n- 해결 방법, 기술 추천, 라이브러리명, 추가 질문, 추정 기능 제안은 절대 쓰지 않는다.\n- 사용자가 말하지 않은 세부 조건을 만들어내지 않는다.`
-    );
-    state.understanding = reply;
-    document.getElementById('step1Status').style.display = 'none';
-    document.getElementById('confirmText').textContent = reply;
-    document.getElementById('confirmBubble').style.display = 'block';
-  } catch(e) {
-    document.getElementById('step1Status').querySelector('span').textContent = '오류: ' + e.message;
-    document.getElementById('runBtn').disabled = false;
+
+  // 3단계: Tavily README 수집
+  async function enrichWithTavily(repos) {
+    const res = await fetch('/api/tavily', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repos })
+    });
+    if (!res.ok) throw new Error('README 수집 실패: ' + await res.text());
+    const data = await res.json();
+    return data.enriched;
   }
-}
 
-async function confirmed() {
-  activateSteps('step0','step1','step2');
-  document.getElementById('analysisBox').style.display = 'none';
-  document.getElementById('questionsArea').innerHTML = '<div style="color:#555550;font-size:12px;padding:0.5rem 0">분석 중...</div>';
-  try {
-    const raw = await callClaude(
-      [{ role:'user', content: state.problem }],
-      `사용자 문제를 GitHub 레포 탐색 관점에서 분석해서 JSON만 반환해라. 마크다운, 설명문, 코드블록은 금지한다.\n\n반환 형식은 반드시 아래 스키마와 키 이름을 그대로 사용한다.\n{"analysis":"이 문제 유형에 GitHub에 어떤 레포가 많은지 한 문장","env_recommended":"python|node|browser|server","env_reason":"왜 그 환경을 추천하는지 한 문장","data_recommended":"manual|api|unknown","output_recommended":"display|file|alert|auto"}\n\n출력 제한:\n- JSON 객체에는 위 5개 키만 포함한다. 다른 키를 추가하거나 같은 키를 반복하지 않는다.\n- data_recommended 값에는 manual, api, unknown 중 하나만 쓰고, 이유 문장을 넣지 않는다.\n- enum 값은 파이프 문자 전체가 아니라 선택지 중 정확히 하나만 쓴다.\n- 첫 글자는 {, 마지막 글자는 }여야 한다.\n\n판단 규칙:\n- 먼저 사용자의 핵심 도메인을 식별하고, analysis에 그 도메인을 명시한다. 예: LLM/AI 에이전트, AIS/선박 추적, YouTube 자막/요약.\n- 도메인을 범용 작업명으로 축소하지 않는다. 예: "AI 에이전트 비교"를 일반 benchmarking이나 HTTP 성능 테스트로 해석하지 않는다.\n- GitHub에 많을 법한 레포 유형은 "도메인 + 기능" 형태로 쓴다. 예: LLM agent evaluation, AIS vessel tracking, YouTube transcript summarization.`
-    );
-    let parsed = null;
-    try { parsed = JSON.parse(raw.replace(/```json?|```/g,'').trim()); } catch {}
-    state.analysis = parsed;
-    if (parsed?.analysis) {
-      document.getElementById('analysisText').textContent = parsed.analysis;
-      document.getElementById('analysisBox').style.display = 'block';
-    }
-    renderQuestions(parsed);
-  } catch { renderQuestions(null); }
-}
-
-function notConfirmed() {
-  activateSteps('step0');
-  document.getElementById('runBtn').disabled = false;
-  document.getElementById('problemInput').focus();
-}
-
-const IMPACTS = {
-  python: 'Python 기반 레포 위주로 검색돼요.',
-  node: 'Node.js 기반 레포 위주로 검색돼요.',
-  browser: '브라우저 전용 레포만 필터링돼요.',
-  server: '서버/클라우드 환경 레포까지 포함돼요.',
-  multi: '여러 환경이 선택됐어요.',
-  none: '환경 미선택 → 모든 유형을 검색해요.'
-};
-
-function getImpact(checked) {
-  if (!checked.length) return IMPACTS.none;
-  if (checked.includes('browser')) return IMPACTS.browser;
-  if (checked.length > 1) return IMPACTS.multi;
-  return IMPACTS[checked[0]] || IMPACTS.none;
-}
-
-function renderQuestions(a) {
-  const rec = a?.env_recommended || null;
-  const envOpts = [
-    { v:'python', l:'Python 가능 (설치 가능)' },
-    { v:'node', l:'Node.js 가능 (설치 가능)' },
-    { v:'server', l:'서버 / 클라우드 환경 있음' },
-    { v:'browser', l:'브라우저만 있음 (설치 불가)' },
-  ];
-  const dataRec = a?.data_recommended || null;
-  const dataOpts = [
-    { v:'manual', l:'직접 입력하거나 파일로 갖고 있어요' },
-    { v:'api', l:'API나 웹사이트에서 가져와야 해요' },
-    { v:'unknown', l:'아직 모르겠어요' },
-  ];
-  const outRec = a?.output_recommended || null;
-  const outOpts = [
-    { v:'display', l:'화면에 표시되면 돼요' },
-    { v:'file', l:'파일(엑셀, CSV 등)로 저장하고 싶어요' },
-    { v:'alert', l:'조건이 되면 알림을 받고 싶어요' },
-    { v:'auto', l:'자동으로 반복 실행되면 좋겠어요' },
-  ];
-
-  document.getElementById('questionsArea').innerHTML = `
-    <div class="q-item">
-      <div class="q-label">코드 실행 환경이 어떻게 돼요? <span style="color:#555550;font-size:12px">(여러 개 선택 가능)</span></div>
-      <div class="q-reason">이 선택에 따라 검색되는 레포 유형이 달라져요.</div>
-      ${rec && a?.env_reason ? `<div class="rec-hint">💡 ${a.env_reason}</div>` : ''}
-      <div class="checkbox-group" id="envGroup">
-        ${envOpts.map(o=>`
-          <label class="cb-item${rec===o.v?' recommended':''}" id="env-${o.v}">
-            <input type="checkbox" value="${o.v}" onchange="onEnvChange()">
-            <span class="cb-label">${o.l}</span>
-            ${rec===o.v?'<span class="rec-badge">추천</span>':''}
-          </label>`).join('')}
-      </div>
-      <div class="impact-box" id="envImpact"></div>
-    </div>
-    <div class="q-item">
-      <div class="q-label">데이터는 어디서 가져와요?</div>
-      <div class="checkbox-group">
-        ${dataOpts.map(o=>`
-          <label class="cb-item${dataRec===o.v?' recommended':''}" id="data-${o.v}">
-            <input type="radio" name="q_data" value="${o.v}" onchange="onRadioChange('q_data')">
-            <span class="cb-label">${o.l}</span>
-            ${dataRec===o.v?'<span class="rec-badge">추천</span>':''}
-          </label>`).join('')}
-      </div>
-    </div>
-    <div class="q-item">
-      <div class="q-label">결과물이 뭐예요?</div>
-      <div class="checkbox-group">
-        ${outOpts.map(o=>`
-          <label class="cb-item${outRec===o.v?' recommended':''}" id="out-${o.v}">
-            <input type="radio" name="q_output" value="${o.v}" onchange="onRadioChange('q_output')">
-            <span class="cb-label">${o.l}</span>
-            ${outRec===o.v?'<span class="rec-badge">추천</span>':''}
-          </label>`).join('')}
-      </div>
-    </div>`;
-
-  if (rec) { const el = document.querySelector(`#envGroup input[value="${rec}"]`); if(el){el.checked=true;el.closest('.cb-item').classList.add('checked');} }
-  if (dataRec) { const el = document.querySelector(`input[name="q_data"][value="${dataRec}"]`); if(el){el.checked=true;el.closest('.cb-item').classList.add('checked');} }
-  if (outRec) { const el = document.querySelector(`input[name="q_output"][value="${outRec}"]`); if(el){el.checked=true;el.closest('.cb-item').classList.add('checked');} }
-  onEnvChange();
-}
-
-function onEnvChange() {
-  const checked = Array.from(document.querySelectorAll('#envGroup input:checked')).map(i=>i.value);
-  document.querySelectorAll('#envGroup input').forEach(cb => cb.closest('.cb-item').classList.toggle('checked', cb.checked));
-  const box = document.getElementById('envImpact');
-  if (!box) return;
-  if (!checked.length) { box.classList.remove('show'); return; }
-  box.textContent = getImpact(checked);
-  box.classList.add('show');
-}
-
-function onRadioChange(name) {
-  document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.closest('.cb-item').classList.toggle('checked', r.checked));
-}
-
-async function submitSituation() {
-  const envChecked = Array.from(document.querySelectorAll('#envGroup input:checked')).map(i=>i.value);
-  const dataVal = document.querySelector('input[name="q_data"]:checked')?.value || 'unknown';
-  const outVal = document.querySelector('input[name="q_output"]:checked')?.value || 'display';
-  state.situation = { env: envChecked.join(',') || 'unknown', data: dataVal, output: outVal };
-
-  activateSteps('step0','step1','step2','step3');
-  document.getElementById('searchStatus').style.display = 'flex';
-  document.getElementById('keywordsDisplay').style.display = 'none';
-
-  try {
-    document.getElementById('searchStatusText').textContent = 'Claude가 검색 키워드 추출 중...';
-    const kwRaw = await callClaude(
-      [{ role:'user', content:`문제: ${state.problem}\n이해 요약: ${state.understanding}` }],
-      `이 문제를 GitHub에서 검색할 영어 키워드를 도메인 혼동 없이 추출해라. 순수 JSON 객체만 반환하고 마크다운, 설명문, 코드블록, \`\`\`json fence는 절대 쓰지 않는다.\n\n반환 형식은 반드시 아래 스키마를 따른다.\n{"include":["keyword 1","keyword 2","keyword 3"],"exclude":["excluded term 1","excluded term 2"],"query":"github search query"}\n\n규칙:\n- include는 3~5개이며, 각 항목은 GitHub 검색에 바로 쓸 수 있는 영어 구문이다.\n- include의 모든 항목에는 사용자의 도메인을 고정하는 단어를 최소 1개 포함한다. 예: LLM/AI 에이전트 문제는 LLM, AI agent, agent eval 중 하나를 포함하고, 선박 문제는 AIS, vessel, maritime 중 하나를 포함하며, 유튜브 문제는 YouTube, transcript, subtitle 중 하나를 포함한다.\n- 범용어만 단독으로 쓰지 않는다. 금지 예: benchmarking tool, performance evaluation, tracking, summarization, automation.\n- exclude는 3~6개이며, 같은 단어가 다른 도메인에서 불러올 수 있는 오탐 키워드를 영어로 적는다.\n- 첫 글자는 {, 마지막 글자는 }여야 한다.`
-    );
-    let kwObj = { include: [], exclude: [], query: '' };
-    try {
-      const parsed = JSON.parse(kwRaw.replace(/```json?|```/g,'').trim());
-      if (Array.isArray(parsed)) {
-        kwObj = { include: parsed, exclude: [], query: parsed.map(x=>`"${x}"`).join(' OR ') };
-      } else {
-        kwObj.include = Array.isArray(parsed.include) ? parsed.include : [];
-        kwObj.exclude = Array.isArray(parsed.exclude) ? parsed.exclude : [];
-        kwObj.query = typeof parsed.query === 'string' && parsed.query.trim() ? parsed.query.trim()
-          : kwObj.include.map(x=>`"${x}"`).join(' OR ');
-      }
-    } catch {
-      kwObj.include = [state.problem.split(' ').slice(0,3).join(' ')];
-      kwObj.query = kwObj.include[0];
-    }
-    state.keywords = kwObj.include;
-    document.getElementById('keywordsList').innerHTML = kwObj.include.map(k=>`<span class="keyword">${k}</span>`).join('');
-    document.getElementById('keywordsDisplay').style.display = 'block';
-
-    document.getElementById('searchStatusText').textContent = 'GitHub 레포 검색 중...';
-    let all = [];
-    for (const kw of kwObj.include.slice(0,3)) { all.push(...await searchGitHub(kw)); }
-    const seen = new Set();
-    all = all.filter(r=>{ if(seen.has(r.id)) return false; seen.add(r.id); return true; });
-    all = all.sort((a,b)=>b.stargazers_count-a.stargazers_count).slice(0,8);
-
-    document.getElementById('searchStatusText').textContent = 'README 분석 중...';
-    const withReadme = await Promise.all(all.slice(0,6).map(async r=>({...r, readme: await getReadme(r.owner.login, r.name)})));
-
-    document.getElementById('searchStatusText').textContent = 'Claude가 적합도 판단 중...';
-    const sit = `실행 환경: ${state.situation.env}, 데이터: ${state.situation.data}, 결과물: ${state.situation.output}`;
-    const summaries = withReadme.map((r,i)=>`[${i+1}] ${r.full_name}\n설명: ${r.description||'없음'}\n스타: ${r.stargazers_count}, 언어: ${r.language||'?'}\nREADME: ${r.readme?.slice(0,500)||'없음'}`).join('\n---\n');
-
-    const jRaw = await callClaude(
-      [{ role:'user', content:`문제: ${state.problem}\n상황: ${sit}\n\n${summaries}` }],
-      `각 GitHub 레포가 사용자 문제에 적합한지 평가해서 JSON 배열만 반환해라. 마크다운, 설명문, 코드블록은 금지한다.\n\n반환 형식은 반드시 아래 스키마를 따른다.\n[{"index":1,"verdict":"pass|warn|fail","reason":"소거 또는 통과 근거 한 문장","filter1":true,"filter2":true,"filter3":true}]\n\n평가 기준:\n- filter1 문제유형: 레포의 설명, README 요약, 토픽, 이름이 사용자 도메인과 기능에 직접 연결되면 true다. 도메인이 다르면 false다. 예: LLM 에이전트 비교 문제에서 HTTP load testing, CPU benchmark, generic monitoring 레포는 false다.\n- filter2 활성프로젝트: 최근 업데이트, 유지보수 흔적, stars/forks/issues 등 활동성이 충분하면 true다.\n- filter3 사용자상황적합: 사용자의 목표 산출물과 실행 흐름에 맞으면 true다.\n- verdict는 세 필터가 모두 true면 pass, 핵심 도메인은 맞지만 일부 불확실성이 있으면 warn, 도메인이 다르거나 핵심 기능이 없으면 fail이다.\n- reason은 반드시 25~45자 내외의 한국어 한 문장으로 쓴다.\n- reason에는 레포의 구체 단서 2개 이상을 포함한다. 예: "LLM 에이전트 평가 기능은 맞지만 마지막 업데이트가 오래되고 CLI 전용이라 주의가 필요합니다."\n- "좋음", "부적합", "관련 있음"처럼 추상적인 표현만 쓰지 않는다.\n- 입력 목록의 index를 그대로 유지하고, 입력에 없는 index를 만들지 않는다.`
-    );
-    let verdicts = [];
-    try { verdicts = JSON.parse(jRaw.replace(/```json?|```/g,'').trim()); } catch {}
-
-    const passCount = verdicts.filter(v=>v.verdict==='pass').length;
-    const conclusion = await callClaude(
-      [{ role:'user', content:`문제: ${state.problem}\n상황: ${sit}\npass ${passCount}개` }],
-      `탐색 결과 결론을 2~3문장으로. 한국어. 쉬운 말로.`
-    );
-
-    state.repos = withReadme.map((r,i)=>({...r, verdict: verdicts[i]||{verdict:'warn',reason:'판단 불가',filter1:false,filter2:false,filter3:false}}));
-    renderResults(state.repos, conclusion);
-  } catch(e) {
-    document.getElementById('searchStatusText').textContent = '오류: ' + e.message;
+  // 4단계: Claude 판단
+  async function judgeRepos(top5, rest, problem, stack) {
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        task: 'judge_repos',
+        repos: top5,
+        rest_repos: rest,
+        problem,
+        stack
+      })
+    });
+    if (!res.ok) throw new Error('판단 실패: ' + await res.text());
+    const data = await res.json();
+    return data.results;
   }
-}
 
-function renderResults(repos, conclusion) {
-  activateSteps('step0','step1','step2','step3','step4');
-  document.getElementById('step3').classList.add('active');
-  document.getElementById('reposGrid').innerHTML = repos.map(r=>{
-    const v = r.verdict;
-    return `<div class="repo-card ${v.verdict}">
-      <div class="filter-badges">
-        <span class="badge ${v.filter1?'ok':'ng'}">유형 ${v.filter1?'✓':'✗'}</span>
-        <span class="badge ${v.filter2?'ok':'ng'}">활성 ${v.filter2?'✓':'✗'}</span>
-        <span class="badge ${v.filter3?'ok':'ng'}">상황 ${v.filter3?'✓':'✗'}</span>
-      </div>
-      <div class="repo-header">
-        <a class="repo-name" href="https://github.com/${r.full_name}" target="_blank">${r.full_name}</a>
-        <div class="repo-meta"><span>★ ${r.stargazers_count?.toLocaleString()||0}</span><span>${r.language||'?'}</span><span>${r.updated_at?.slice(0,10)||'?'}</span></div>
-      </div>
-      <div class="repo-desc">${r.description||'설명 없음'}</div>
-      <div class="verdict ${v.verdict}">${v.reason||''}</div>
-    </div>`;
-  }).join('');
-  document.getElementById('conclusionText').innerHTML = conclusion.split('\n').filter(Boolean).map(p=>`<p>${p}</p>`).join('');
-  document.getElementById('conclusionBox').style.display = 'block';
-}
+  // 결과 렌더링
+  function renderResults(results) {
+    const container = document.getElementById('repoCards');
+    document.getElementById('resultsCount').textContent = results.length + '개 레포';
 
-function resetAll() {
-  state = { problem:'', understanding:'', analysis:null, keywords:[], situation:{}, repos:[] };
-  document.getElementById('problemInput').value = '';
-  document.getElementById('runBtn').disabled = false;
-  STEPS.forEach(s=>document.getElementById(s).classList.remove('active'));
-  document.getElementById('step0').classList.add('active');
-  document.getElementById('step1Status').style.display = 'flex';
-  document.getElementById('confirmBubble').style.display = 'none';
-  document.getElementById('reposGrid').innerHTML = '';
-  document.getElementById('conclusionBox').style.display = 'none';
-  document.getElementById('searchStatus').style.display = 'none';
-  document.getElementById('keywordsDisplay').style.display = 'none';
-  document.getElementById('keywordsList').innerHTML = '';
-  document.getElementById('questionsArea').innerHTML = '<div style="color:#555550;font-size:12px;padding:0.5rem 0">분석 중...</div>';
-  document.getElementById('analysisBox').style.display = 'none';
-}
+    container.innerHTML = results.map(repo => {
+      const v1 = getVerdictClass(repo.verdict1);
+      const v2 = getVerdictClass(repo.verdict2);
+      const v3 = getVerdictClass(repo.verdict3);
 
-window.addEventListener('load', ()=>{
-  if(!getSecret()) document.getElementById('noKeyWarn').classList.add('show');
-  const ta = document.getElementById('problemInput');
-  ta.addEventListener('keydown', function(e){
-    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); startFlow(); }
-  });
-});
+      return `
+        <div class="repo-card">
+          <div class="repo-top">
+            <div class="repo-name">
+              <a href="${repo.url}" target="_blank">${repo.full_name}</a>
+            </div>
+            <div class="repo-meta">
+              <span>★ ${formatNum(repo.stars)}</span>
+              <span>${repo.language || '—'}</span>
+              <span>${repo.updated}</span>
+            </div>
+          </div>
+          ${repo.description ? `<div class="repo-desc">${repo.description}</div>` : ''}
+          <div class="verdict-grid">
+            <div class="verdict-item ${v1}">
+              <div class="verdict-label">① 유형 존재</div>
+              <div class="verdict-value">${repo.verdict1}</div>
+            </div>
+            <div class="verdict-item ${v2}">
+              <div class="verdict-label">② 활용 가능</div>
+              <div class="verdict-value">${repo.verdict2}</div>
+            </div>
+            <div class="verdict-item ${v3}">
+              <div class="verdict-label">③ 내 스택 적용</div>
+              <div class="verdict-value">${repo.verdict3}</div>
+            </div>
+          </div>
+          <div class="repo-summary">${repo.summary}</div>
+        </div>
+      `;
+    }).join('');
+
+    document.getElementById('resultsSection').classList.add('visible');
+    document.getElementById('analyzeSection').classList.add('visible');
+  }
+
+  function getVerdictClass(verdict) {
+    if (!verdict) return 'verdict-fail';
+    const v = verdict.toLowerCase();
+    if (v.includes('가능') || v.includes('있음') || v.includes('yes') || v.includes('pass')) return 'verdict-pass';
+    if (v.includes('부분') || v.includes('수정') || v.includes('partial')) return 'verdict-partial';
+    return 'verdict-fail';
+  }
+
+  function formatNum(n) {
+    if (n >= 1000) return (n/1000).toFixed(1) + 'k';
+    return n;
+  }
+
+  // 통합 분석 프롬프트 생성
+  function copyAnalysisPrompt() {
+    if (!searchResults) return;
+
+    const repoSummaries = searchResults.map((r, i) => `
+### ${i+1}. ${r.full_name}
+- URL: ${r.url}
+- Stars: ${r.stars} / Language: ${r.language || '—'} / Updated: ${r.updated}
+- Description: ${r.description || '없음'}
+- ① 유형 존재: ${r.verdict1}
+- ② 활용 가능: ${r.verdict2}
+- ③ 내 스택 적용: ${r.verdict3}
+- 요약: ${r.summary}
+${r.readme_snippet ? `- README 발췌: ${r.readme_snippet.slice(0, 300)}...` : ''}
+`).join('\n');
+
+    const prompt = `# GitHub 탐색 결과 분석 — 통합 최대 소진 프롬프트
+
+## 작업 맥락
+내가 풀고 싶은 문제: ${problemText}
+내 스택: ${stackText}
+추출된 키워드: ${extractedKeywords.join(', ')}
+
+## GitHub 탐색 결과
+${repoSummaries}
+
+---
+
+## 요청: 아래 10단계를 순서대로 수행해줘
+
+### 1단계. 수집 자료 품질 평가
+- 내 문제와의 관련도 (상/중/하)
+- 자료 신선도 (최근 커밋 기준)
+- 유지보수 활성도 (star/fork/issue 기준)
+- 추가 수집이 필요한 영역 제안
+
+### 2단계. 구조 해부
+관련도 높은 상위 5개 프로젝트를 선택해 각각 분석해줘.
+- 핵심 아키텍처 패턴 / 데이터 흐름 / 핵심 컴포넌트 / 내 스택과의 호환성
+
+### 3단계. 역공학 패턴 추출
+메모리 관리 방식 / 툴 호출 최적화 / 프롬프트 엔지니어링 패턴을 역공학으로 추론해줘.
+각 패턴: 이름 / 구조 / 적용 조건 / 예시 / 분류(직접/수정후/참고)
+
+### 4단계. 갭 분석
+내 현재 구현과 우수 사례 사이의 갭: 갭항목 / 현재상태 / 목표상태 / 개선방법 / 난이도
+
+### 5단계. 적용 설계
+상위 3개 패턴 적용 방법: 적용위치 / 변경코드 / 추가코드 구조 / 테스트방법
+
+### 6단계. 리스크 분석
+기존 기능 충돌 / 성능 영향 / 유지보수 복잡도 / 롤백 방법 / 오픈소스 의존 리스크
+
+### 7단계. 구현 우선순위 매트릭스
+가치 × 난이도 매트릭스: Quick Win / 장기투자 / 선택적검토 / 제외
+
+### 8단계. 구현 로드맵
+주 단위 일정 / 완료 기준 / 검증 포인트 / Python 자동화 아키텍처 포함
+
+### 9단계. 자기검토
+내 스택 부적합 제안 / 더 단순한 해결책 / 빠진 패턴 → 수정된 우선순위 재출력
+
+### 10단계. 후속 작업지시서 생성
+- Manus용: 추가 GitHub 탐색 지시서 (검색어 포함)
+- Python용: 패턴 적용 구현 명세서
+- GPT용: Quick Win 코드 초안 지시서
+- 다음 Claude 세션용: 핵심 맥락 압축 메모 (500자)
+- Markdown 지식베이스용: 디자인 패턴 분류 체계 카드 (RAG 저장용)
+- 추가 탐색 키워드 30개
+
+---
+
+## 출력 형식
+전체 Markdown / 각 단계 H2 헤더 / 매트릭스는 표 형식 / 마지막에 "이 세션 전체 요약" 1페이지`;
+
+    navigator.clipboard.writeText(prompt).then(() => {
+      document.getElementById('copyMsg').style.display = 'block';
+      setTimeout(() => { document.getElementById('copyMsg').style.display = 'none'; }, 3000);
+    });
+  }
 </script>
 </body>
 </html>
