@@ -639,7 +639,7 @@
     });
     if (!res.ok) throw new Error('GitHub 검색 실패: ' + await res.text());
     const data = await res.json();
-    return data.repos;
+    return Array.isArray(data) ? data : (data.repos || []);
   }
 
   // 3단계: Tavily README 수집
@@ -649,9 +649,9 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ repos })
     });
-    if (!res.ok) throw new Error('README 수집 실패: ' + await res.text());
+    if (!res.ok) return repos; // Tavily 실패시 원본 repos 그대로 반환
     const data = await res.json();
-    return data.enriched;
+    return Array.isArray(data) ? data : (data.enriched || repos);
   }
 
   // 4단계: Claude 판단
@@ -669,11 +669,17 @@
     });
     if (!res.ok) throw new Error('판단 실패: ' + await res.text());
     const data = await res.json();
-    return data.results;
+    const results = Array.isArray(data) ? data : (data.results || []);
+    if (!results.length) throw new Error('판단 결과가 비어있습니다');
+    return results;
   }
 
   // 결과 렌더링
   function renderResults(results) {
+    if (!results || !results.length) {
+      showError('결과가 없습니다. 다른 키워드로 다시 시도해보세요.');
+      return;
+    }
     const container = document.getElementById('repoCards');
     document.getElementById('resultsCount').textContent = results.length + '개 레포';
 
