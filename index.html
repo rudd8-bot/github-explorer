@@ -592,6 +592,8 @@
       const repos = await searchGitHub(keywords);
       setStep(2, 'done');
 
+      if (!repos.length) throw new Error('GitHub에서 관련 레포를 찾지 못했습니다. 다른 문제를 입력해보세요.');
+
       // 3단계: Tavily README 수집
       setStep(3, 'active');
       const top5 = repos.slice(0, 5);

@@ -32,7 +32,8 @@ export default async function handler(req, res) {
         }
 
         const data = await response.json();
-        const content = data.results?.[0]?.content || data.results?.[1]?.content || null;
+        const content = data.results?.[0]?.raw_content || data.results?.[0]?.content ||
+                        data.results?.[1]?.raw_content || data.results?.[1]?.content || null;
 
         return {
           ...repo,
