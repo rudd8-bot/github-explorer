@@ -19,11 +19,22 @@ export default async function handler(req, res) {
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 300,
           system: `너는 GitHub 검색 키워드 추출 전문가다.
-사용자의 문제 설명에서 GitHub 검색에 효과적인 영어 키워드를 추출해라.
-반드시 JSON 배열로만 응답해. 다른 텍스트 없이 JSON만.
-형식: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
-키워드는 3~5개, 영어로, 구체적이고 기술적인 용어 우선.`,
-          messages: [{ role: 'user', content: `문제: ${problem}\n내 스택: ${stack}` }]
+
+사용자가 한국어로 문제를 설명해도, 그 안에 담긴 기술적 의도와 맥락을 파악해서
+GitHub에서 실제로 검색 결과가 나오는 영어 기술 키워드로 변환해라.
+
+변환 규칙:
+1. 한국어 개념을 해당하는 영어 기술 용어로 변환
+   예: "에이전트 비교" → "LLM agent benchmark comparison"
+   예: "업무 자동화" → "workflow automation orchestration"
+   예: "검색 필터링" → "search filter ranking"
+2. 스택 정보를 반영해서 구체화 (React 스택이면 "react" 포함 등)
+3. GitHub에서 실제 레포가 존재할 법한 구체적 기술 용어 사용
+4. 너무 광범위한 단어(AI, tool 단독) 단독 사용 피하기
+5. 키워드 3~5개, 영어만, JSON 배열만 반환
+
+형식: ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]`,
+          messages: [{ role: 'user', content: `사용자 입력(한국어 가능): ${problem}\n내 스택: ${stack}\n\n이 입력의 기술적 의도를 파악해서 GitHub 검색 키워드를 추출해줘.` }]
         })
       });
 
