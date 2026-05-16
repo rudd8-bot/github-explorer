@@ -7,21 +7,33 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Pretendard:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --border: #1e1e2e;
-    --border-bright: #2e2e4e;
-    --text: #e0e0f0;
-    --text-dim: #6060a0;
-    --text-muted: #3a3a5a;
-    --accent: #5555ff;
-    --accent-glow: rgba(85,85,255,0.15);
-    --green: #00ff88;
-    --green-dim: rgba(0,255,136,0.1);
-    --yellow: #ffcc00;
-    --red: #ff4466;
+    --bg: #f4f5fb;
+    --surface: #ffffff;
+    --border: #d6d9ee;
+    --border-bright: #b8bce0;
+    --text: #1a1b30;
+    --text-dim: #52578a;
+    --text-muted: #9298c0;
+    --accent: #3b3fd8;
+    --accent-light: #eeeffe;
+    --accent-glow: rgba(59,63,216,0.12);
+    --green: #0a7a46;
+    --green-bg: #e8f7f0;
+    --green-border: #9ed8bc;
+    --yellow: #8a6000;
+    --yellow-bg: #fff8e0;
+    --yellow-border: #f0d080;
+    --red: #b8273a;
+    --red-bg: #fff0f2;
+    --red-border: #f0b0bc;
+    --partial: #7a5000;
+    --partial-bg: #fff4e0;
+    --partial-border: #f0c880;
     --mono: 'IBM Plex Mono', monospace;
     --sans: 'Pretendard', sans-serif;
+    --shadow: 0 2px 10px rgba(59,63,216,0.07);
+    --shadow-lg: 0 4px 24px rgba(59,63,216,0.12);
+    --radius: 10px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,18 +46,7 @@
     overflow-x: hidden;
   }
 
-  /* 배경 그리드 */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(85,85,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(85,85,255,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
+
 
   .container {
     max-width: 900px;
@@ -146,7 +147,7 @@
     letter-spacing: 0.05em;
   }
 
-  .btn-primary:hover { background: #6666ff; box-shadow: 0 0 20px var(--accent-glow); }
+  .btn-primary:hover { background: #2c30c0; box-shadow: 0 0 16px var(--accent-glow); }
   .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* 내 스택 입력 */
@@ -253,13 +254,13 @@
   }
 
   .keyword-tag {
-    background: var(--accent-glow);
-    border: 1px solid var(--accent);
+    background: var(--accent-light);
+    border: 1px solid #c0c6f0;
     color: var(--accent);
     font-family: var(--mono);
     font-size: 12px;
     padding: 4px 12px;
-    border-radius: 3px;
+    border-radius: 20px;
   }
 
   /* 결과 카드 */
@@ -371,9 +372,9 @@
     font-weight: 500;
   }
 
-  .verdict-pass { background: var(--green-dim); border-color: rgba(0,255,136,0.3); color: var(--green); }
-  .verdict-partial { background: rgba(255,204,0,0.08); border-color: rgba(255,204,0,0.3); color: var(--yellow); }
-  .verdict-fail { background: rgba(255,68,102,0.08); border-color: rgba(255,68,102,0.3); color: var(--red); }
+  .verdict-pass { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+  .verdict-partial { background: var(--partial-bg); border-color: var(--partial-border); color: var(--partial); }
+  .verdict-fail { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
 
   .repo-summary {
     font-size: 12px;
@@ -443,8 +444,8 @@
 
   /* 에러 */
   .error-box {
-    background: rgba(255,68,102,0.08);
-    border: 1px solid rgba(255,68,102,0.3);
+    background: var(--red-bg);
+    border: 1px solid var(--red-border);
     border-radius: 6px;
     padding: 14px 16px;
     font-family: var(--mono);
@@ -457,6 +458,93 @@
   .error-box.visible { display: block; }
 
   /* 반응형 */
+  /* ── 비밀번호 모달 ── */
+  #authOverlay {
+    position: fixed; inset: 0;
+    background: rgba(10,12,40,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #authOverlay.hidden { display: none; }
+  .auth-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 36px 32px;
+    width: 100%; max-width: 420px;
+    box-shadow: var(--shadow-lg);
+  }
+  .auth-logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    margin-bottom: 18px;
+  }
+  .auth-card h2 {
+    font-size: 18px; font-weight: 600;
+    color: var(--text); margin-bottom: 6px;
+  }
+  .auth-card p {
+    font-size: 13px; color: var(--text-dim);
+    margin-bottom: 24px; line-height: 1.6;
+  }
+  .auth-field { margin-bottom: 12px; }
+  .auth-field label {
+    display: block; font-size: 11px; font-weight: 500;
+    color: var(--text-muted); margin-bottom: 5px;
+    font-family: var(--mono); letter-spacing: 0.08em;
+  }
+  .auth-field input {
+    width: 100%; padding: 10px 13px;
+    border: 1.5px solid var(--border);
+    border-radius: 7px; font-size: 13px;
+    font-family: var(--mono); color: var(--text);
+    background: var(--bg); outline: none;
+    transition: border-color 0.2s;
+  }
+  .auth-field input:focus { border-color: var(--accent); background: #fff; }
+  .auth-field input::placeholder { color: var(--text-muted); }
+  .auth-submit {
+    width: 100%; margin-top: 10px;
+    padding: 12px; background: var(--accent);
+    color: #fff; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .auth-submit:hover { background: #2c30c0; }
+  .auth-err {
+    font-size: 12px; color: var(--red);
+    text-align: center; margin-top: 8px; min-height: 18px;
+  }
+  .auth-note {
+    font-size: 11px; color: var(--text-muted);
+    text-align: center; margin-top: 12px;
+  }
+  /* 설정 버튼 */
+  .header-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 48px;
+  }
+  .btn-settings {
+    padding: 8px 14px;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 8px; font-size: 13px; color: var(--text-dim);
+    cursor: pointer; transition: all 0.18s; white-space: nowrap;
+    font-family: var(--sans); margin-top: 4px;
+  }
+  .btn-settings:hover { border-color: var(--accent); color: var(--accent); }
+  /* 결과 상단 복사 버튼 */
+  .copy-top-btn {
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 8px;
+    padding: 9px 18px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
+    font-family: var(--sans);
+  }
+  .copy-top-btn:hover { background: #2c30c0; }
+  .copy-top-btn.copied { background: var(--green); }
   @media (max-width: 600px) {
     .verdict-grid { grid-template-columns: 1fr; }
     .input-row { flex-direction: column; }
@@ -465,13 +553,40 @@
 </style>
 </head>
 <body>
+
+<!-- ── 비밀번호 모달 ── -->
+<div id="authOverlay">
+  <div class="auth-card">
+    <div class="auth-logo">// GITHUB EXPLORER</div>
+    <h2>API 키 설정</h2>
+    <p>처음 사용 시 API 키를 입력해주세요.<br>키는 이 브라우저에만 저장됩니다.</p>
+    <div class="auth-field">
+      <label>ANTHROPIC API KEY</label>
+      <input type="password" id="authClaude" placeholder="sk-ant-..." autocomplete="off">
+    </div>
+    <div class="auth-field">
+      <label>GITHUB PAT</label>
+      <input type="password" id="authGithub" placeholder="ghp_..." autocomplete="off">
+    </div>
+    <div class="auth-field">
+      <label>TAVILY API KEY</label>
+      <input type="password" id="authTavily" placeholder="tvly-..." autocomplete="off">
+    </div>
+    <button class="auth-submit" onclick="submitAuth()">저장하고 시작</button>
+    <div class="auth-err" id="authErr"></div>
+    <div class="auth-note">키는 localStorage에 저장됩니다. 서버 전송 없음.</div>
+  </div>
+</div>
 <div class="container">
 
-  <header>
-    <div class="header-tag">// GitHub Explorer v1.0</div>
-    <h1>GitHub<span>_</span>탐색 도구</h1>
-    <p class="header-desc">자연어 문제 → GitHub 레포 탐색 → 3단계 실행 가능성 판단</p>
-  </header>
+  <div class="header-row">
+    <header>
+      <div class="header-tag">// GitHub Explorer v1.0</div>
+      <h1>GitHub<span>_</span>탐색 도구</h1>
+      <p class="header-desc">자연어 문제 → GitHub 레포 탐색 → 3단계 실행 가능성 판단</p>
+    </header>
+    <button class="btn-settings" onclick="openSettings()">⚙ 설정</button>
+  </div>
 
   <!-- 입력 -->
   <div class="input-section">
@@ -509,7 +624,10 @@
   <div class="results-section" id="resultsSection">
     <div class="results-header">
       <div class="results-label">// 탐색 결과</div>
-      <div class="results-count" id="resultsCount"></div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="results-count" id="resultsCount"></div>
+        <button class="copy-top-btn" id="copyTopBtn" onclick="copyAnalysisPrompt()">📋 통합 분석 프롬프트 복사</button>
+      </div>
     </div>
     <div id="repoCards"></div>
   </div>
@@ -530,6 +648,58 @@
 </div>
 
 <script>
+  // ── 인증 ──
+  function getKeys() {
+    return {
+      claude: localStorage.getItem('ghe_claude') || '',
+      github: localStorage.getItem('ghe_github') || '',
+      tavily: localStorage.getItem('ghe_tavily') || '',
+    };
+  }
+
+  function checkAuth() {
+    const k = getKeys();
+    if (!k.claude || !k.github || !k.tavily) {
+      document.getElementById('authOverlay').classList.remove('hidden');
+    } else {
+      document.getElementById('authOverlay').classList.add('hidden');
+    }
+  }
+
+  function submitAuth() {
+    const claude = document.getElementById('authClaude').value.trim();
+    const github = document.getElementById('authGithub').value.trim();
+    const tavily = document.getElementById('authTavily').value.trim();
+    const errEl = document.getElementById('authErr');
+
+    if (!claude || !github || !tavily) {
+      errEl.textContent = '세 가지 키를 모두 입력해주세요.'; return;
+    }
+    if (!claude.startsWith('sk-ant-')) {
+      errEl.textContent = 'Claude 키는 sk-ant- 로 시작해야 합니다.'; return;
+    }
+    if (!github.startsWith('ghp_') && !github.startsWith('github_pat_')) {
+      errEl.textContent = 'GitHub PAT는 ghp_ 또는 github_pat_ 로 시작해야 합니다.'; return;
+    }
+    localStorage.setItem('ghe_claude', claude);
+    localStorage.setItem('ghe_github', github);
+    localStorage.setItem('ghe_tavily', tavily);
+    errEl.textContent = '';
+    document.getElementById('authOverlay').classList.add('hidden');
+  }
+
+  function openSettings() {
+    // 현재 저장된 값이 있으면 마스킹 표시
+    const k = getKeys();
+    document.getElementById('authClaude').value = k.claude ? '(저장됨 — 변경하려면 새로 입력)' : '';
+    document.getElementById('authGithub').value = k.github ? '(저장됨 — 변경하려면 새로 입력)' : '';
+    document.getElementById('authTavily').value = k.tavily ? '(저장됨 — 변경하려면 새로 입력)' : '';
+    document.getElementById('authErr').textContent = '';
+    document.getElementById('authOverlay').classList.remove('hidden');
+  }
+
+  window.addEventListener('DOMContentLoaded', checkAuth);
+
   function handleEnter(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -815,8 +985,19 @@ ${repoSummaries}
 전체 Markdown / 각 단계 H2 헤더 / 매트릭스는 표 형식 / 마지막에 "이 세션 전체 요약" 1페이지`;
 
     navigator.clipboard.writeText(prompt).then(() => {
+      // 하단 메시지
       document.getElementById('copyMsg').style.display = 'block';
       setTimeout(() => { document.getElementById('copyMsg').style.display = 'none'; }, 3000);
+      // 상단 버튼 피드백
+      const btn = document.getElementById('copyTopBtn');
+      if (btn) {
+        btn.textContent = '✅ 복사 완료!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = '📋 통합 분석 프롬프트 복사';
+          btn.classList.remove('copied');
+        }, 2500);
+      }
     });
   }
 </script>

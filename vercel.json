@@ -1,5 +1,7 @@
 {
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
-  ]
+  "functions": {
+    "api/claude.js": { "maxDuration": 30 },
+    "api/github.js": { "maxDuration": 15 },
+    "api/tavily.js": { "maxDuration": 30 }
+  }
 }
