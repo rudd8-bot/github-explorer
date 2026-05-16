@@ -554,27 +554,19 @@
 </head>
 <body>
 
-<!-- ── 비밀번호 모달 ── -->
+<!-- ── 앱 시크릿 모달 ── -->
 <div id="authOverlay">
   <div class="auth-card">
     <div class="auth-logo">// GITHUB EXPLORER</div>
-    <h2>API 키 설정</h2>
-    <p>처음 사용 시 API 키를 입력해주세요.<br>키는 이 브라우저에만 저장됩니다.</p>
+    <h2>접근 비밀번호</h2>
+    <p>비밀번호를 입력해주세요.</p>
     <div class="auth-field">
-      <label>ANTHROPIC API KEY</label>
-      <input type="password" id="authClaude" placeholder="sk-ant-..." autocomplete="off">
+      <label>PASSWORD</label>
+      <input type="password" id="authSecret" placeholder="비밀번호 입력"
+             autocomplete="off" onkeydown="if(event.key==='Enter') submitAuth()">
     </div>
-    <div class="auth-field">
-      <label>GITHUB PAT</label>
-      <input type="password" id="authGithub" placeholder="ghp_..." autocomplete="off">
-    </div>
-    <div class="auth-field">
-      <label>TAVILY API KEY</label>
-      <input type="password" id="authTavily" placeholder="tvly-..." autocomplete="off">
-    </div>
-    <button class="auth-submit" onclick="submitAuth()">저장하고 시작</button>
+    <button class="auth-submit" onclick="submitAuth()">확인</button>
     <div class="auth-err" id="authErr"></div>
-    <div class="auth-note">키는 localStorage에 저장됩니다. 서버 전송 없음.</div>
   </div>
 </div>
 <div class="container">
@@ -649,53 +641,49 @@
 
 <script>
   // ── 인증 ──
-  function getKeys() {
-    return {
-      claude: localStorage.getItem('ghe_claude') || '',
-      github: localStorage.getItem('ghe_github') || '',
-      tavily: localStorage.getItem('ghe_tavily') || '',
-    };
-  }
-
   function checkAuth() {
-    const k = getKeys();
-    if (!k.claude || !k.github || !k.tavily) {
-      document.getElementById('authOverlay').classList.remove('hidden');
-    } else {
+    if (sessionStorage.getItem('ghe_auth') === '1') {
       document.getElementById('authOverlay').classList.add('hidden');
+    } else {
+      document.getElementById('authOverlay').classList.remove('hidden');
+      setTimeout(() => document.getElementById('authSecret')?.focus(), 100);
     }
   }
 
-  function submitAuth() {
-    const claude = document.getElementById('authClaude').value.trim();
-    const github = document.getElementById('authGithub').value.trim();
-    const tavily = document.getElementById('authTavily').value.trim();
+  async function submitAuth() {
+    const secret = document.getElementById('authSecret').value.trim();
     const errEl = document.getElementById('authErr');
+    if (!secret) { errEl.textContent = '비밀번호를 입력해주세요.'; return; }
 
-    if (!claude || !github || !tavily) {
-      errEl.textContent = '세 가지 키를 모두 입력해주세요.'; return;
+    errEl.textContent = '확인 중...';
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        sessionStorage.setItem('ghe_auth', '1');
+        document.getElementById('authOverlay').classList.add('hidden');
+        errEl.textContent = '';
+      } else {
+        errEl.textContent = '비밀번호가 틀렸습니다.';
+        document.getElementById('authSecret').value = '';
+        document.getElementById('authSecret').focus();
+      }
+    } catch (e) {
+      errEl.textContent = '서버 오류. 잠시 후 다시 시도해주세요.';
     }
-    if (!claude.startsWith('sk-ant-')) {
-      errEl.textContent = 'Claude 키는 sk-ant- 로 시작해야 합니다.'; return;
-    }
-    if (!github.startsWith('ghp_') && !github.startsWith('github_pat_')) {
-      errEl.textContent = 'GitHub PAT는 ghp_ 또는 github_pat_ 로 시작해야 합니다.'; return;
-    }
-    localStorage.setItem('ghe_claude', claude);
-    localStorage.setItem('ghe_github', github);
-    localStorage.setItem('ghe_tavily', tavily);
-    errEl.textContent = '';
-    document.getElementById('authOverlay').classList.add('hidden');
   }
 
   function openSettings() {
-    // 현재 저장된 값이 있으면 마스킹 표시
-    const k = getKeys();
-    document.getElementById('authClaude').value = k.claude ? '(저장됨 — 변경하려면 새로 입력)' : '';
-    document.getElementById('authGithub').value = k.github ? '(저장됨 — 변경하려면 새로 입력)' : '';
-    document.getElementById('authTavily').value = k.tavily ? '(저장됨 — 변경하려면 새로 입력)' : '';
-    document.getElementById('authErr').textContent = '';
+    // 설정 버튼은 시크릿 재인증으로 대체
+    sessionStorage.removeItem('ghe_auth');
+    document.getElementById('authSecret') && (document.getElementById('authSecret').value = '');
+    document.getElementById('authErr') && (document.getElementById('authErr').textContent = '');
     document.getElementById('authOverlay').classList.remove('hidden');
+    setTimeout(() => document.getElementById('authSecret')?.focus(), 100);
   }
 
   window.addEventListener('DOMContentLoaded', checkAuth);
