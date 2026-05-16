@@ -42,8 +42,10 @@ GitHub에서 실제로 검색 결과가 나오는 영어 기술 키워드로 변
       if (!response.ok) throw new Error(data.error?.message || 'Claude API 오류');
 
       const text = data.content[0].text.trim();
-      const clean = text.replace(/```json|```/g, '').trim();
-      const kws = JSON.parse(clean);
+      // JSON 배열만 추출 (앞뒤 설명 텍스트 제거)
+      const match = text.match(/\[[\s\S]*?\]/);
+      if (!match) throw new Error('키워드 추출 실패: JSON 배열을 찾을 수 없습니다');
+      const kws = JSON.parse(match[0]);
       return res.status(200).json({ keywords: kws });
 
     } else if (task === 'judge_repos') {
